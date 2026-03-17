@@ -1,0 +1,17 @@
+Analyze the following code from repository: {repo_url}
+
+Languages: {languages}
+Frameworks: {frameworks}
+
+## Recon Findings Summary
+{recon_findings_summary}
+
+## Dependency Context
+{dependency_context}
+
+## Code Chunks for Analysis
+{code_chunks}
+
+Identify all security vulnerabilities in the code above. Trace data flows from user inputs to dangerous sinks. Check for injection vulnerabilities, authentication/authorization flaws, insecure cryptography, and missing input validation.
+
+Respond with JSON containing a "findings" array.

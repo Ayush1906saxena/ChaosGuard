@@ -1,0 +1,149 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: chaosguard-gateway
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/chaosguard}
+    username: ${DATABASE_USER:chaosguard}
+    password: ${DATABASE_PASSWORD:chaosguard}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+      pool-name: ChaosGuardHikariPool
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+    show-sql: ${SHOW_SQL:false}
+    open-in-view: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 1
+    consumer:
+      group-id: chaosguard-gateway
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: java.util.HashMap
+    listener:
+      concurrency: 3
+      ack-mode: manual_immediate
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+chaosguard:
+  scan:
+    max-concurrent-scans: ${MAX_CONCURRENT_SCANS:10}
+    max-repo-size-mb: ${MAX_REPO_SIZE_MB:500}
+    max-file-count: ${MAX_FILE_COUNT:50000}
+    clone-base-dir: ${CLONE_BASE_DIR:/tmp/chaosguard/repos}
+    clone-timeout-seconds: ${CLONE_TIMEOUT_SECONDS:300}
+  kafka:
+    topics:
+      repo-clone-events: repo-clone-events
+      index-events: index-events
+      scan-progress: scan-progress
+      scan-complete: scan-complete
+      results-ready: results-ready
+      analysis-events: analysis-events
+      scan-recon-events: scan-recon-events
+      scan-hunter-events: scan-hunter-events
+      scan-siege-events: scan-siege-events
+  github:
+    token: ${GITHUB_TOKEN:}
+    app-id: ${GITHUB_APP_ID:}
+    installation-id: ${GITHUB_INSTALLATION_ID:}
+  ignore:
+    extensions:
+      - .min.js
+      - .min.css
+      - .map
+      - .lock
+      - .sum
+      - .png
+      - .jpg
+      - .jpeg
+      - .gif
+      - .ico
+      - .svg
+      - .woff
+      - .woff2
+      - .ttf
+      - .eot
+      - .mp4
+      - .mp3
+      - .pdf
+      - .zip
+      - .tar
+      - .gz
+      - .jar
+      - .war
+      - .class
+      - .pyc
+      - .so
+      - .dylib
+      - .dll
+      - .exe
+      - .bin
+    directories:
+      - node_modules
+      - .git
+      - .svn
+      - .hg
+      - vendor
+      - dist
+      - build
+      - target
+      - __pycache__
+      - .gradle
+      - .idea
+      - .vscode
+      - .DS_Store
+      - coverage
+      - .nyc_output
+      - .next
+      - .nuxt

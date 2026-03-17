@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.gradle/
+target/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+.env.production
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Build
+dist/
+build/
+.next/
+out/
+
+# Docker volumes
+postgres_data/
+kafka_data/
+chroma_data/
+ollama_data/
+
+# Temp files
+/tmp/
+*.log
+
+# Cloned repos
+/repos/
+
+# Internal docs / notes
+next_steps.txt
+ChaosGuard_*.docx
+ChaosGuard_*.md
+!README.md

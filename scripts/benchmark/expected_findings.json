@@ -1,0 +1,50 @@
+{
+  "repos": [
+    {
+      "url": "https://github.com/WebGoat/WebGoat",
+      "name": "WebGoat",
+      "tier": "HUNTER",
+      "expected_findings": [
+        {"category": "injection", "subcategory": "sql_injection", "min_count": 3},
+        {"category": "injection", "subcategory": "xss", "min_count": 2},
+        {"category": "authentication", "subcategory": "weak_auth", "min_count": 1},
+        {"category": "configuration", "subcategory": "insecure_config", "min_count": 1},
+        {"category": "injection", "subcategory": "xxe", "min_count": 1},
+        {"category": "vulnerability", "subcategory": "path_traversal", "min_count": 1},
+        {"category": "vulnerability", "subcategory": "deserialization", "min_count": 1}
+      ]
+    },
+    {
+      "url": "https://github.com/juice-shop/juice-shop",
+      "name": "juice-shop",
+      "tier": "HUNTER",
+      "expected_findings": [
+        {"category": "injection", "subcategory": "sql_injection", "min_count": 2},
+        {"category": "injection", "subcategory": "xss", "min_count": 3},
+        {"category": "authentication", "subcategory": "broken_auth", "min_count": 2},
+        {"category": "vulnerability", "subcategory": "ssrf", "min_count": 1},
+        {"category": "configuration", "subcategory": "security_misconfiguration", "min_count": 1}
+      ]
+    },
+    {
+      "url": "https://github.com/OWASP/NodeGoat",
+      "name": "NodeGoat",
+      "tier": "HUNTER",
+      "expected_findings": [
+        {"category": "injection", "subcategory": "sql_injection", "min_count": 1},
+        {"category": "injection", "subcategory": "xss", "min_count": 2},
+        {"category": "authentication", "subcategory": "session_management", "min_count": 1},
+        {"category": "vulnerability", "subcategory": "insecure_direct_object_ref", "min_count": 1}
+      ]
+    },
+    {
+      "url": "https://github.com/spring-projects/spring-petclinic",
+      "name": "spring-petclinic",
+      "tier": "RECON",
+      "expected_findings": [
+        {"category": "dependency", "subcategory": "outdated_dependency", "min_count": 0},
+        {"category": "configuration", "subcategory": "debug_enabled", "min_count": 0}
+      ]
+    }
+  ]
+}
