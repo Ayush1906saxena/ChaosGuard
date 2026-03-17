@@ -308,6 +308,73 @@ export interface FindingFeedback {
   createdAt: string;
 }
 
+// ── Chaos Experiment Types (Real Execution) ─────────────────────────────────
+
+export type ExperimentStatus =
+  | 'PENDING'
+  | 'PLANNING'
+  | 'PROVISIONING'
+  | 'BASELINE'
+  | 'PENDING_APPROVAL'
+  | 'STEADY_STATE'
+  | 'INJECTING'
+  | 'OBSERVING'
+  | 'ROLLING_BACK'
+  | 'RECOVERING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'ABORTED'
+  | 'REJECTED'
+  | 'ERROR';
+
+export interface ChaosExperiment {
+  id: string;
+  scanId: string;
+  scenarioId: string;
+  status: ExperimentStatus;
+  experimentPlan: Record<string, unknown>;
+  baselineMetrics: ExperimentMetrics;
+  chaosMetrics: ExperimentMetrics;
+  recoveryMetrics: ExperimentMetrics;
+  resilienceScore: number | null;
+  recoveryTimeS: number | null;
+  faultsInjected: FaultInjection[];
+  healthTimeline: HealthTimelineEntry[];
+  verdict: string | null;
+  recommendations: string[];
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface ExperimentMetrics {
+  total: number;
+  success_rate: number;
+  avg_response_ms: number;
+  p99_response_ms: number;
+  error_count: number;
+}
+
+export interface FaultInjection {
+  injection_id: string;
+  fault_type: string;
+  target_service: string;
+  target_container: string;
+  params: Record<string, unknown>;
+  success: boolean;
+  started_at: string;
+  error: string;
+}
+
+export interface HealthTimelineEntry {
+  timestamp: string;
+  service: string;
+  url: string;
+  status_code: number;
+  response_time_ms: number;
+  success: boolean;
+  error: string;
+}
+
 // ── Benchmark/Metrics Types (Task 6) ────────────────────────────────────────
 
 export interface ScanMetrics {

@@ -332,6 +332,124 @@ async def analyze(request: AnalyzeRequest):
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(exc)}")
 
 
+# ---------------------------------------------------------------------------
+# Chaos Execution API
+# ---------------------------------------------------------------------------
+
+class ChaosExecuteRequest(BaseModel):
+    scan_id: str
+    scenario: dict
+    clone_path: str
+    auto_approve: bool = False
+
+
+class ChaosApprovalRequest(BaseModel):
+    experiment_id: str
+    action: str  # "approve" or "reject"
+
+
+class ChaosAbortRequest(BaseModel):
+    scan_id: str
+
+
+@app.post("/chaos/execute")
+async def execute_chaos(request: ChaosExecuteRequest):
+    """Execute a chaos experiment against a sandboxed Docker Compose application."""
+    from chaos_executor.runner import ExperimentRunner
+
+    runner = ExperimentRunner()
+
+    # Run in background so the HTTP call returns immediately
+    async def _run():
+        return await runner.run_experiment(
+            scan_id=request.scan_id,
+            scenario=request.scenario,
+            clone_path=request.clone_path,
+            auto_approve=request.auto_approve,
+        )
+
+    task = asyncio.create_task(_run())
+
+    # Return the experiment ID immediately — client polls for status
+    # Wait briefly for the planning phase to get the experiment ID
+    await asyncio.sleep(1)
+    return {
+        "status": "started",
+        "message": "Chaos experiment initiated. Poll /chaos/status for updates.",
+        "scan_id": request.scan_id,
+    }
+
+
+@app.post("/chaos/approve")
+async def approve_chaos(request: ChaosApprovalRequest):
+    """Approve or reject a pending chaos experiment."""
+    from chaos_executor.safety import SafetyController
+
+    safety = SafetyController()
+    if request.action == "approve":
+        safety.approve(request.experiment_id)
+        return {"status": "approved", "experiment_id": request.experiment_id}
+    elif request.action == "reject":
+        safety.reject(request.experiment_id)
+        return {"status": "rejected", "experiment_id": request.experiment_id}
+    else:
+        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+
+
+@app.post("/chaos/abort")
+async def abort_chaos(request: ChaosAbortRequest):
+    """Emergency stop — immediately rolls back all faults and tears down sandbox."""
+    from chaos_executor.safety import SafetyController
+
+    safety = SafetyController()
+    safety.trigger_emergency_stop(request.scan_id)
+    return {"status": "abort_triggered", "scan_id": request.scan_id}
+
+
+@app.get("/chaos/experiments/{scan_id}")
+async def get_chaos_experiments(scan_id: str):
+    """Get all chaos experiments for a scan."""
+    try:
+        conn = psycopg2.connect(config.POSTGRES_DSN)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT id, scenario_id, status, experiment_plan,
+                              resilience_score, recovery_time_s, verdict,
+                              recommendations, faults_injected,
+                              baseline_metrics, chaos_metrics, recovery_metrics,
+                              health_timeline, started_at, completed_at
+                       FROM chaos_experiments WHERE scan_id = %s::uuid
+                       ORDER BY created_at DESC""",
+                    (scan_id,),
+                )
+                rows = cur.fetchall()
+                experiments = []
+                for row in rows:
+                    experiments.append({
+                        "id": str(row[0]),
+                        "scenarioId": row[1],
+                        "status": row[2],
+                        "experimentPlan": row[3],
+                        "resilienceScore": row[4],
+                        "recoveryTimeS": row[5],
+                        "verdict": row[6],
+                        "recommendations": row[7],
+                        "faultsInjected": row[8],
+                        "baselineMetrics": row[9],
+                        "chaosMetrics": row[10],
+                        "recoveryMetrics": row[11],
+                        "healthTimeline": row[12],
+                        "startedAt": str(row[13]) if row[13] else None,
+                        "completedAt": str(row[14]) if row[14] else None,
+                    })
+                return {"experiments": experiments}
+        finally:
+            conn.close()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",

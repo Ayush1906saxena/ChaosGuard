@@ -3,6 +3,7 @@ import {
   Finding,
   AttackChain,
   ChaosScenario,
+  ChaosExperiment,
   Fix,
   PentestPlaybook,
   FileTreeNode,
@@ -197,6 +198,73 @@ export async function getScanMetrics(scanId: string): Promise<ScanMetrics> {
 
 export async function getQueueStatus(): Promise<Record<string, { queued: number; processing: number }>> {
   return request<Record<string, { queued: number; processing: number }>>('/api/v1/scans/queue-status');
+}
+
+// ── Chaos Experiments (Real Execution) ──────────────────────────────────────
+
+export async function getChaosAvailability(
+  scanId: string
+): Promise<{ available: boolean; reason: string }> {
+  return request<{ available: boolean; reason: string }>(
+    `/api/v1/scans/${scanId}/chaos-availability`
+  );
+}
+
+export async function startChaosExperiment(
+  scanId: string,
+  scenarioId: string,
+  autoApprove: boolean = false
+): Promise<{ status: string; scanId: string }> {
+  return request<{ status: string; scanId: string }>(
+    `/api/v1/scans/${scanId}/chaos-experiments`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ scenarioId, autoApprove }),
+    }
+  );
+}
+
+export async function getChaosExperiments(
+  scanId: string
+): Promise<ChaosExperiment[]> {
+  return request<ChaosExperiment[]>(
+    `/api/v1/scans/${scanId}/chaos-experiments`
+  );
+}
+
+export async function getChaosExperiment(
+  experimentId: string
+): Promise<ChaosExperiment> {
+  return request<ChaosExperiment>(
+    `/api/v1/chaos-experiments/${experimentId}`
+  );
+}
+
+export async function approveChaosExperiment(
+  experimentId: string
+): Promise<{ status: string }> {
+  return request<{ status: string }>(
+    `/api/v1/chaos-experiments/${experimentId}/approve`,
+    { method: 'POST' }
+  );
+}
+
+export async function rejectChaosExperiment(
+  experimentId: string
+): Promise<{ status: string }> {
+  return request<{ status: string }>(
+    `/api/v1/chaos-experiments/${experimentId}/reject`,
+    { method: 'POST' }
+  );
+}
+
+export async function abortChaosExperiments(
+  scanId: string
+): Promise<{ status: string }> {
+  return request<{ status: string }>(
+    `/api/v1/scans/${scanId}/chaos-experiments/abort`,
+    { method: 'POST' }
+  );
 }
 
 // ── Export ───────────────────────────────────────────────────────────────────

@@ -223,3 +223,27 @@ CREATE TABLE IF NOT EXISTS reports (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- === Chaos Experiments (real execution results) ===
+CREATE TABLE IF NOT EXISTS chaos_experiments (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    scan_id             UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+    scenario_id         VARCHAR(200),
+    status              VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    experiment_plan     JSONB DEFAULT '{}',
+    baseline_metrics    JSONB DEFAULT '{}',
+    chaos_metrics       JSONB DEFAULT '{}',
+    recovery_metrics    JSONB DEFAULT '{}',
+    resilience_score    FLOAT,
+    recovery_time_s     FLOAT,
+    faults_injected     JSONB DEFAULT '[]',
+    health_timeline     JSONB DEFAULT '[]',
+    verdict             TEXT,
+    recommendations     JSONB DEFAULT '[]',
+    started_at          TIMESTAMP WITH TIME ZONE,
+    completed_at        TIMESTAMP WITH TIME ZONE,
+    created_at          TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chaos_experiments_scan ON chaos_experiments(scan_id);
+CREATE INDEX IF NOT EXISTS idx_chaos_experiments_status ON chaos_experiments(status);
+
