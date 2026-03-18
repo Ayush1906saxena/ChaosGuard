@@ -6,6 +6,13 @@ import { getFileTree, getFileContent, getFindings } from '@/lib/api';
 import SeverityBadge from '@/components/SeverityBadge';
 import { cn } from '@/lib/utils';
 import type { FileTreeNode, FileContent, Finding, Severity } from '@/lib/types';
+import {
+  FolderIcon,
+  DocumentIcon,
+  ChevronRightIcon,
+  ChevronDownIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 
 const severityIndicator: Record<Severity, string> = {
   CRITICAL: 'bg-red-500',
@@ -38,22 +45,28 @@ function TreeItem({
           else onSelect(node.path);
         }}
         className={cn(
-          'w-full flex items-center gap-2 px-2 py-1 text-left text-xs rounded transition-colors',
-          isSelected ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+          'w-full flex items-center gap-2 px-2 py-1.5 text-left text-xs rounded-lg transition-colors',
+          isSelected ? 'bg-white/[0.06] text-zinc-100 border border-white/[0.08]' : 'text-zinc-400 hover:bg-white/[0.03] hover:text-zinc-200'
         )}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
       >
         {isDir ? (
-          <span className="text-zinc-500 w-4 text-center flex-shrink-0">
-            {expanded ? '\u25BE' : '\u25B8'}
-          </span>
+          expanded ? (
+            <ChevronDownIcon className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+          ) : (
+            <ChevronRightIcon className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+          )
         ) : (
-          <span className="w-4 flex-shrink-0" />
+          <span className="w-3 flex-shrink-0" />
         )}
 
-        <span className="truncate flex-1">
-          {isDir ? '\uD83D\uDCC1' : '\uD83D\uDCC4'} {node.name}
-        </span>
+        {isDir ? (
+          <FolderIcon className="w-4 h-4 text-blue-400/70 flex-shrink-0" />
+        ) : (
+          <DocumentIcon className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+        )}
+
+        <span className="truncate flex-1">{node.name}</span>
 
         {node.findingCount && node.findingCount > 0 && (
           <div className="flex items-center gap-1">
@@ -89,7 +102,9 @@ export default function CodePage() {
   const [fileContent, setFileContent] = useState<FileContent | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [loadingFile, setLoadingFile] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
 
   useEffect(() => {
@@ -97,8 +112,8 @@ export default function CodePage() {
       try {
         const treeData = await getFileTree(scanId);
         setTree(treeData);
-      } catch {
-        // handle silently
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load file tree');
       } finally {
         setLoading(false);
       }
@@ -110,11 +125,13 @@ export default function CodePage() {
     setSelectedPath(path);
     setLoadingFile(true);
     setSelectedFinding(null);
+    setFileError(null);
     try {
       const content = await getFileContent(scanId, path);
       setFileContent(content);
-    } catch {
+    } catch (err) {
       setFileContent(null);
+      setFileError(err instanceof Error ? err.message : 'Failed to load file');
     } finally {
       setLoadingFile(false);
     }
@@ -138,8 +155,22 @@ export default function CodePage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-red-400 text-sm mb-2">Failed to load file tree</p>
+          <p className="text-zinc-500 text-xs mb-4">{error}</p>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 text-xs bg-white/[0.04] border border-white/[0.06] text-zinc-400 rounded-lg hover:bg-white/[0.08] transition-colors">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-zinc-100">Code Explorer</h1>
         <p className="text-sm text-zinc-500 mt-1">Browse source code and view vulnerability markers</p>
@@ -147,8 +178,8 @@ export default function CodePage() {
 
       <div className="flex gap-4 h-[calc(100vh-220px)]">
         {/* File Tree Sidebar */}
-        <div className="w-72 flex-shrink-0 bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden flex flex-col">
-          <div className="px-4 py-3 border-b border-zinc-800">
+        <div className="w-72 flex-shrink-0 glass-card rounded-xl overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b border-white/[0.04]">
             <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Files</h3>
           </div>
           <div className="flex-1 overflow-y-auto py-2">
@@ -165,7 +196,7 @@ export default function CodePage() {
         </div>
 
         {/* Code Viewer */}
-        <div className="flex-1 bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden flex flex-col">
+        <div className="flex-1 glass-card rounded-xl overflow-hidden flex flex-col">
           {!selectedPath ? (
             <div className="flex-1 flex items-center justify-center text-zinc-500 text-sm">
               Select a file to view its contents
@@ -177,14 +208,14 @@ export default function CodePage() {
           ) : fileContent ? (
             <>
               {/* File header */}
-              <div className="px-4 py-2 border-b border-zinc-800 flex items-center justify-between bg-zinc-800/50">
+              <div className="px-4 py-2 border-b border-white/[0.04] flex items-center justify-between bg-white/[0.02]">
                 <span className="text-xs font-mono text-zinc-400">{fileContent.path}</span>
-                <span className="text-[10px] text-zinc-600 uppercase">{fileContent.language}</span>
+                <span className="text-[10px] text-zinc-600 uppercase bg-white/[0.04] px-2 py-0.5 rounded-md">{fileContent.language}</span>
               </div>
 
               {/* Findings bar */}
               {fileContent.findings.length > 0 && (
-                <div className="px-4 py-2 border-b border-zinc-800 bg-zinc-800/30">
+                <div className="px-4 py-2 border-b border-white/[0.04] bg-white/[0.01]">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[10px] text-zinc-500 uppercase tracking-wider mr-2">Findings:</span>
                     {fileContent.findings.map((f) => (
@@ -192,10 +223,10 @@ export default function CodePage() {
                         key={f.id}
                         onClick={() => handleFindingClick(f)}
                         className={cn(
-                          'flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] border transition-colors',
+                          'flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] border transition-colors',
                           selectedFinding?.id === f.id
-                            ? 'bg-zinc-700 border-zinc-600 text-zinc-200'
-                            : 'bg-zinc-800 border-zinc-700/50 text-zinc-400 hover:border-zinc-600'
+                            ? 'bg-white/[0.06] border-white/[0.1] text-zinc-200'
+                            : 'bg-white/[0.02] border-white/[0.04] text-zinc-400 hover:border-white/[0.08]'
                         )}
                       >
                         <SeverityBadge severity={f.severity} size="sm" />
@@ -224,8 +255,8 @@ export default function CodePage() {
                         key={idx}
                         className={cn(
                           'flex',
-                          isSelectedVuln ? 'code-line-vuln bg-red-500/15' :
-                          isVuln ? 'code-line-warn' : ''
+                          isSelectedVuln ? 'bg-red-500/10 border-l-2 border-red-500/50' :
+                          isVuln ? 'bg-orange-500/[0.05] border-l-2 border-orange-500/30' : 'border-l-2 border-transparent'
                         )}
                       >
                         <span className="w-12 text-right pr-4 text-zinc-600 select-none flex-shrink-0 py-0.5">
@@ -245,7 +276,7 @@ export default function CodePage() {
 
               {/* Selected finding detail */}
               {selectedFinding && (
-                <div className="border-t border-zinc-800 p-4 bg-zinc-800/50">
+                <div className="border-t border-white/[0.04] p-4 bg-white/[0.02] animate-slide-up">
                   <div className="flex items-start gap-3">
                     <SeverityBadge severity={selectedFinding.severity} size="sm" />
                     <div className="flex-1 min-w-0">
@@ -258,17 +289,20 @@ export default function CodePage() {
                     </div>
                     <button
                       onClick={() => setSelectedFinding(null)}
-                      className="text-zinc-500 hover:text-zinc-300 text-sm flex-shrink-0"
+                      className="text-zinc-500 hover:text-zinc-300 flex-shrink-0"
                     >
-                      {'\u2715'}
+                      <XMarkIcon className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
               )}
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-zinc-500 text-sm">
-              Unable to load file content
+            <div className="flex-1 flex items-center justify-center text-sm">
+              <div className="text-center">
+                <p className="text-red-400 mb-1">Unable to load file</p>
+                {fileError && <p className="text-zinc-600 text-xs">{fileError}</p>}
+              </div>
             </div>
           )}
         </div>

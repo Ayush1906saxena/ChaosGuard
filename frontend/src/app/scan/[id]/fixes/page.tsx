@@ -7,12 +7,21 @@ import SeverityBadge from '@/components/SeverityBadge';
 import DiffViewer from '@/components/DiffViewer';
 import { cn } from '@/lib/utils';
 import type { Fix } from '@/lib/types';
+import {
+  ChevronUpIcon,
+  ChevronDownIcon,
+  ArrowUpTrayIcon,
+  ExclamationTriangleIcon,
+  BeakerIcon,
+  CheckIcon,
+} from '@heroicons/react/24/outline';
 
 export default function FixesPage() {
   const params = useParams();
   const scanId = params.id as string;
   const [fixes, setFixes] = useState<Fix[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedFixes, setSelectedFixes] = useState<Set<string>>(new Set());
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -23,8 +32,8 @@ export default function FixesPage() {
       try {
         const data = await getFixes(scanId);
         setFixes(data);
-      } catch {
-        // handle silently
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load fixes');
       } finally {
         setLoading(false);
       }
@@ -69,9 +78,9 @@ export default function FixesPage() {
   };
 
   const confidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'text-green-400 bg-green-500/15 border-green-500/30';
-    if (confidence >= 0.5) return 'text-yellow-400 bg-yellow-500/15 border-yellow-500/30';
-    return 'text-red-400 bg-red-500/15 border-red-500/30';
+    if (confidence >= 0.8) return 'text-green-400 bg-green-500/10 border-green-500/20';
+    if (confidence >= 0.5) return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
+    return 'text-red-400 bg-red-500/10 border-red-500/20';
   };
 
   if (loading) {
@@ -88,8 +97,22 @@ export default function FixesPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-red-400 text-sm mb-2">Failed to load fixes</p>
+          <p className="text-zinc-500 text-xs mb-4">{error}</p>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 text-xs bg-white/[0.04] border border-white/[0.06] text-zinc-400 rounded-lg hover:bg-white/[0.08] transition-colors">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-100">Fix Review</h1>
@@ -101,7 +124,7 @@ export default function FixesPage() {
           <button
             onClick={handleCreatePR}
             disabled={actionLoading === 'pr'}
-            className="flex items-center gap-2 px-4 py-2 bg-green-500/15 border border-green-500/30 text-green-400 rounded-lg text-sm font-medium hover:bg-green-500/25 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl text-sm font-semibold hover:from-emerald-500 hover:to-green-500 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
           >
             {actionLoading === 'pr' ? (
               <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -109,9 +132,7 @@ export default function FixesPage() {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
             ) : (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
+              <ArrowUpTrayIcon className="w-4 h-4" />
             )}
             Create PR ({selectedFixes.size} fix{selectedFixes.size > 1 ? 'es' : ''})
           </button>
@@ -122,10 +143,10 @@ export default function FixesPage() {
       {actionResult && (
         <div
           className={cn(
-            'rounded-xl px-4 py-3 text-sm',
+            'glass-card rounded-xl px-4 py-3 text-sm',
             actionResult.type === 'success'
-              ? 'bg-green-500/10 border border-green-500/30 text-green-400'
-              : 'bg-red-500/10 border border-red-500/30 text-red-400'
+              ? 'glow-green border-emerald-500/20 text-emerald-400'
+              : 'glow-red border-red-500/20 text-red-400'
           )}
         >
           {actionResult.message}
@@ -133,17 +154,17 @@ export default function FixesPage() {
       )}
 
       {fixes.length === 0 ? (
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-12 text-center">
+        <div className="glass-card rounded-2xl p-12 text-center">
           <p className="text-zinc-500">No fixes generated for this scan.</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 stagger-children">
           {fixes.map((fix) => {
             const isExpanded = expandedId === fix.id;
             return (
               <div
                 key={fix.id}
-                className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden"
+                className="glass-card glass-card-hover rounded-2xl overflow-hidden"
               >
                 {/* Fix Header */}
                 <div className="flex items-start p-6">
@@ -151,16 +172,14 @@ export default function FixesPage() {
                   <button
                     onClick={() => toggleFixSelection(fix.id)}
                     className={cn(
-                      'w-5 h-5 rounded border flex-shrink-0 mr-4 mt-0.5 flex items-center justify-center transition-colors',
+                      'w-5 h-5 rounded-md border flex-shrink-0 mr-4 mt-0.5 flex items-center justify-center transition-all',
                       selectedFixes.has(fix.id)
-                        ? 'bg-green-500 border-green-500 text-white'
-                        : 'border-zinc-600 hover:border-zinc-400'
+                        ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                        : 'border-white/[0.1] hover:border-white/[0.2] bg-white/[0.02]'
                     )}
                   >
                     {selectedFixes.has(fix.id) && (
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                      <CheckIcon className="w-3 h-3" strokeWidth={3} />
                     )}
                   </button>
 
@@ -170,25 +189,27 @@ export default function FixesPage() {
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <span className={cn(
-                        'px-2 py-0.5 text-[10px] rounded-full border font-semibold',
+                        'px-2.5 py-0.5 text-[10px] rounded-lg border font-semibold',
                         confidenceColor(fix.confidence)
                       )}>
                         {Math.round(fix.confidence * 100)}% confidence
                       </span>
                       {fix.breakingChange && (
-                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-red-500/15 text-red-400 border border-red-500/30">
+                        <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
+                          <ExclamationTriangleIcon className="w-3 h-3" />
                           Breaking Change
                         </span>
                       )}
                       {fix.testRequired && (
-                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                        <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          <BeakerIcon className="w-3 h-3" />
                           Test Required
                         </span>
                       )}
                     </div>
                     <h3 className="text-base font-semibold text-zinc-100 mb-1">{fix.title}</h3>
                     <p className="text-sm text-zinc-400">{fix.description}</p>
-                    <p className="text-xs font-mono text-zinc-500 mt-2">
+                    <p className="text-xs font-mono text-zinc-600 mt-2">
                       {fix.filePath}:{fix.startLine}-{fix.endLine}
                     </p>
                   </button>
@@ -197,19 +218,21 @@ export default function FixesPage() {
                     <button
                       onClick={() => handleCreateIssue(fix.id)}
                       disabled={actionLoading === fix.id}
-                      className="px-3 py-1.5 text-xs bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                      className="px-3 py-1.5 text-xs bg-white/[0.03] border border-white/[0.06] text-zinc-300 rounded-lg hover:bg-white/[0.06] transition-colors disabled:opacity-50"
                     >
                       {actionLoading === fix.id ? 'Creating...' : 'Create Issue'}
                     </button>
-                    <span className="text-zinc-500 text-xl">
-                      {isExpanded ? '\u25B2' : '\u25BC'}
-                    </span>
+                    {isExpanded ? (
+                      <ChevronUpIcon className="w-5 h-5 text-zinc-500" />
+                    ) : (
+                      <ChevronDownIcon className="w-5 h-5 text-zinc-500" />
+                    )}
                   </div>
                 </div>
 
                 {/* Expanded */}
                 {isExpanded && (
-                  <div className="border-t border-zinc-800 p-6 space-y-6">
+                  <div className="border-t border-white/[0.04] p-6 space-y-6 animate-slide-up">
                     {/* Diff */}
                     <DiffViewer
                       originalCode={fix.originalCode}
@@ -221,7 +244,10 @@ export default function FixesPage() {
                     {/* PoC Steps */}
                     {fix.pocSteps.length > 0 && (
                       <div>
-                        <h4 className="text-sm font-semibold text-zinc-300 mb-3">Proof of Concept Steps</h4>
+                        <h4 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
+                          <div className="w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
+                          Proof of Concept Steps
+                        </h4>
                         <ol className="space-y-2 list-decimal list-inside">
                           {fix.pocSteps.map((step, idx) => (
                             <li key={idx} className="text-sm text-zinc-400">

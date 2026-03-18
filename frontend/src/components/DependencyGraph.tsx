@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import type { DependencyNode, DependencyEdge, Severity } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface DependencyGraphProps {
   nodes: DependencyNode[];
@@ -112,14 +113,14 @@ export default function DependencyGraph({ nodes, edges, onNodeClick }: Dependenc
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', '#3f3f46');
+      .attr('fill', 'rgba(255,255,255,0.1)');
 
     // Links
     const link = g.append('g')
       .selectAll('line')
       .data(simLinks)
       .join('line')
-      .attr('stroke', '#3f3f46')
+      .attr('stroke', 'rgba(255,255,255,0.08)')
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', (d) => d.type === 'data_flow' ? '4,2' : 'none')
       .attr('marker-end', 'url(#arrowhead)');
@@ -131,7 +132,7 @@ export default function DependencyGraph({ nodes, edges, onNodeClick }: Dependenc
       .join('circle')
       .attr('r', (d) => nodeTypeShapes[d.type] || 6)
       .attr('fill', (d) => riskColors[d.riskLevel])
-      .attr('stroke', '#18181b')
+      .attr('stroke', 'rgba(0,0,0,0.3)')
       .attr('stroke-width', 2)
       .attr('cursor', 'pointer')
       .on('mouseover', function (_event, d) {
@@ -151,7 +152,7 @@ export default function DependencyGraph({ nodes, edges, onNodeClick }: Dependenc
         });
       })
       .on('mouseout', function () {
-        d3.select(this).attr('stroke', '#18181b').attr('stroke-width', 2);
+        d3.select(this).attr('stroke', 'rgba(0,0,0,0.3)').attr('stroke-width', 2);
         setTooltip(null);
       })
       .on('click', (_event, d) => {
@@ -172,7 +173,7 @@ export default function DependencyGraph({ nodes, edges, onNodeClick }: Dependenc
       .join('text')
       .text((d) => d.name.length > 20 ? d.name.slice(0, 20) + '...' : d.name)
       .attr('font-size', '9px')
-      .attr('fill', '#71717a')
+      .attr('fill', '#52525b')
       .attr('text-anchor', 'middle')
       .attr('dy', 20)
       .attr('pointer-events', 'none');
@@ -213,13 +214,13 @@ export default function DependencyGraph({ nodes, edges, onNodeClick }: Dependenc
   }, [nodes, edges, handleNodeClick]);
 
   return (
-    <div ref={containerRef} className="relative w-full h-full min-h-[500px] bg-zinc-900/50 rounded-xl border border-zinc-700/50">
+    <div ref={containerRef} className="relative w-full h-full min-h-[500px] glass-card rounded-xl">
       <svg ref={svgRef} className="w-full h-full" />
 
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="absolute z-10 pointer-events-none bg-zinc-800 border border-zinc-700 rounded-lg p-3 shadow-xl"
+          className="absolute z-10 pointer-events-none glass-card rounded-lg p-3 shadow-xl"
           style={{ left: tooltip.x, top: tooltip.y, transform: 'translate(-50%, -100%)' }}
         >
           <p className="text-xs font-semibold text-zinc-200">{tooltip.node.name}</p>
@@ -235,7 +236,7 @@ export default function DependencyGraph({ nodes, edges, onNodeClick }: Dependenc
       )}
 
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-zinc-800/90 border border-zinc-700/50 rounded-lg p-3">
+      <div className="absolute bottom-4 left-4 glass-card rounded-lg p-3">
         <p className="text-[10px] font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Risk Level</p>
         <div className="space-y-1">
           {Object.entries(riskColors).map(([level, color]) => (
@@ -249,14 +250,14 @@ export default function DependencyGraph({ nodes, edges, onNodeClick }: Dependenc
 
       {/* Selected node details */}
       {selectedNode && (
-        <div className="absolute top-4 right-4 w-64 bg-zinc-800/95 border border-zinc-700 rounded-xl p-4 shadow-xl">
+        <div className="absolute top-4 right-4 w-64 glass-card rounded-xl p-4 shadow-xl animate-scale-in">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-semibold text-zinc-200 truncate">{selectedNode.name}</h4>
             <button
               onClick={() => setSelectedNode(null)}
-              className="text-zinc-500 hover:text-zinc-300 text-sm"
+              className="text-zinc-500 hover:text-zinc-300 transition-colors"
             >
-              {'\u2715'}
+              <XMarkIcon className="w-4 h-4" />
             </button>
           </div>
           <div className="space-y-2 text-xs">
@@ -293,7 +294,7 @@ export default function DependencyGraph({ nodes, edges, onNodeClick }: Dependenc
               1.3
             );
           }}
-          className="w-7 h-7 bg-zinc-800 border border-zinc-700 rounded text-zinc-400 hover:text-zinc-200 text-sm flex items-center justify-center"
+          className="w-7 h-7 glass-card rounded-lg text-zinc-400 hover:text-zinc-200 text-sm flex items-center justify-center transition-colors"
         >
           +
         </button>
@@ -306,7 +307,7 @@ export default function DependencyGraph({ nodes, edges, onNodeClick }: Dependenc
               0.7
             );
           }}
-          className="w-7 h-7 bg-zinc-800 border border-zinc-700 rounded text-zinc-400 hover:text-zinc-200 text-sm flex items-center justify-center"
+          className="w-7 h-7 glass-card rounded-lg text-zinc-400 hover:text-zinc-200 text-sm flex items-center justify-center transition-colors"
         >
           -
         </button>

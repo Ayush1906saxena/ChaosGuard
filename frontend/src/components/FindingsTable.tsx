@@ -48,19 +48,21 @@ export default function FindingsTable({
   const [searchQuery, setSearchQuery] = useState('');
   const [feedbackState, setFeedbackState] = useState<Record<string, FeedbackLabel | null>>({});
   const [feedbackLoading, setFeedbackLoading] = useState<Record<string, boolean>>({});
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   const handleFeedback = async (findingId: string, label: FeedbackLabel) => {
-    // Undo support: if same label clicked again, reset
     if (feedbackState[findingId] === label) {
       setFeedbackState((prev) => ({ ...prev, [findingId]: null }));
       return;
     }
     setFeedbackLoading((prev) => ({ ...prev, [findingId]: true }));
+    setFeedbackError(null);
     try {
       await submitFeedback(findingId, label);
       setFeedbackState((prev) => ({ ...prev, [findingId]: label }));
-    } catch (error) {
-      console.error('Failed to submit feedback:', error);
+    } catch (err) {
+      setFeedbackError(err instanceof Error ? err.message : 'Failed to submit feedback');
+      setTimeout(() => setFeedbackError(null), 4000);
     } finally {
       setFeedbackLoading((prev) => ({ ...prev, [findingId]: false }));
     }
@@ -142,16 +144,16 @@ export default function FindingsTable({
               placeholder="Search findings..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/30 backdrop-blur-sm transition-all"
             />
           </div>
           <button
             onClick={() => setFilterOpen(!filterOpen)}
             className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors',
+              'flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all',
               filterOpen || activeFilterCount > 0
-                ? 'border-blue-500/50 bg-blue-500/10 text-blue-400'
-                : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
+                ? 'border-blue-500/30 bg-blue-500/10 text-blue-400'
+                : 'border-white/[0.06] bg-white/[0.03] text-zinc-400 hover:border-white/[0.1]'
             )}
           >
             <FunnelIcon className="w-4 h-4" />
@@ -166,7 +168,7 @@ export default function FindingsTable({
       )}
 
       {filterOpen && (
-        <div className="bg-zinc-800/80 border border-zinc-700 rounded-xl p-4 space-y-4 animate-slide-up">
+        <div className="glass-card rounded-xl p-4 space-y-4 animate-slide-up">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-zinc-300">Filter Findings</h4>
             <button
@@ -176,7 +178,7 @@ export default function FindingsTable({
                 setTierFilter([]);
                 setSearchQuery('');
               }}
-              className="text-xs text-zinc-500 hover:text-zinc-300"
+              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
             >
               Clear all
             </button>
@@ -232,10 +234,10 @@ export default function FindingsTable({
                     )
                   }
                   className={cn(
-                    'px-2 py-0.5 text-[11px] rounded border transition-colors',
+                    'px-2 py-0.5 text-[11px] rounded-lg border transition-colors',
                     categoryFilter.includes(c)
-                      ? 'border-blue-500/50 bg-blue-500/10 text-blue-400'
-                      : 'border-zinc-700 bg-zinc-800 text-zinc-500 hover:text-zinc-300'
+                      ? 'border-blue-500/30 bg-blue-500/10 text-blue-400'
+                      : 'border-white/[0.06] bg-white/[0.03] text-zinc-500 hover:text-zinc-300'
                   )}
                 >
                   {c.replace(/_/g, ' ')}
@@ -253,7 +255,7 @@ export default function FindingsTable({
             <button
               key={s}
               onClick={() => setSeverityFilter((prev) => prev.filter((x) => x !== s))}
-              className="flex items-center gap-1 px-2 py-0.5 text-xs bg-zinc-800 border border-zinc-700 rounded-full text-zinc-400 hover:text-zinc-200"
+              className="flex items-center gap-1 px-2 py-0.5 text-xs bg-white/[0.03] border border-white/[0.06] rounded-full text-zinc-400 hover:text-zinc-200 transition-colors"
             >
               {s} <XMarkIcon className="w-3 h-3" />
             </button>
@@ -262,7 +264,7 @@ export default function FindingsTable({
             <button
               key={t}
               onClick={() => setTierFilter((prev) => prev.filter((x) => x !== t))}
-              className="flex items-center gap-1 px-2 py-0.5 text-xs bg-zinc-800 border border-zinc-700 rounded-full text-zinc-400 hover:text-zinc-200"
+              className="flex items-center gap-1 px-2 py-0.5 text-xs bg-white/[0.03] border border-white/[0.06] rounded-full text-zinc-400 hover:text-zinc-200 transition-colors"
             >
               {t} <XMarkIcon className="w-3 h-3" />
             </button>
@@ -270,10 +272,16 @@ export default function FindingsTable({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-700/50">
+      {feedbackError && (
+        <div className="glass-card glow-red rounded-xl px-4 py-2.5 text-xs text-red-400 animate-scale-in">
+          {feedbackError}
+        </div>
+      )}
+
+      <div className="overflow-x-auto glass-card rounded-xl">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-700/50 bg-zinc-800/50">
+            <tr className="border-b border-white/[0.04] bg-white/[0.02]">
               {[
                 { field: 'severity' as SortField, label: 'Severity', width: 'w-28' },
                 { field: 'title' as SortField, label: 'Title', width: '' },
@@ -286,7 +294,7 @@ export default function FindingsTable({
                 <th
                   key={field}
                   className={cn(
-                    'px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider cursor-pointer hover:text-zinc-200 select-none',
+                    'px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider cursor-pointer hover:text-zinc-200 select-none transition-colors',
                     width
                   )}
                   onClick={() => toggleSort(field)}
@@ -299,7 +307,7 @@ export default function FindingsTable({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800/50">
+          <tbody className="divide-y divide-white/[0.03]">
             {filteredAndSorted.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center text-zinc-500">
@@ -312,8 +320,8 @@ export default function FindingsTable({
                   key={finding.id}
                   onClick={() => onFindingClick?.(finding)}
                   className={cn(
-                    'transition-colors bg-zinc-900/50',
-                    onFindingClick && 'cursor-pointer hover:bg-zinc-800/70'
+                    'table-row-hover transition-colors',
+                    onFindingClick && 'cursor-pointer'
                   )}
                 >
                   <td className="px-4 py-3">
@@ -326,7 +334,7 @@ export default function FindingsTable({
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-xs text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">
+                    <span className="text-xs text-zinc-400 bg-white/[0.04] border border-white/[0.06] px-2 py-0.5 rounded-md">
                       {finding.category.replace(/_/g, ' ')}
                     </span>
                   </td>
@@ -349,7 +357,7 @@ export default function FindingsTable({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-12 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                      <div className="w-12 h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
                         <div
                           className={cn('h-full rounded-full', {
                             'bg-green-500': finding.confidence >= 0.8,
@@ -370,7 +378,7 @@ export default function FindingsTable({
                         onClick={() => handleFeedback(finding.id, 'TRUE_POSITIVE')}
                         disabled={feedbackLoading[finding.id]}
                         className={cn(
-                          'p-1 rounded transition-colors',
+                          'p-1 rounded-md transition-colors',
                           feedbackState[finding.id] === 'TRUE_POSITIVE'
                             ? 'bg-green-500/20 text-green-400'
                             : 'text-zinc-600 hover:text-green-400 hover:bg-green-500/10'
@@ -383,7 +391,7 @@ export default function FindingsTable({
                         onClick={() => handleFeedback(finding.id, 'FALSE_POSITIVE')}
                         disabled={feedbackLoading[finding.id]}
                         className={cn(
-                          'p-1 rounded transition-colors',
+                          'p-1 rounded-md transition-colors',
                           feedbackState[finding.id] === 'FALSE_POSITIVE'
                             ? 'bg-red-500/20 text-red-400'
                             : 'text-zinc-600 hover:text-red-400 hover:bg-red-500/10'
@@ -396,7 +404,7 @@ export default function FindingsTable({
                         onClick={() => handleFeedback(finding.id, 'WONT_FIX')}
                         disabled={feedbackLoading[finding.id]}
                         className={cn(
-                          'p-1 rounded transition-colors',
+                          'p-1 rounded-md transition-colors',
                           feedbackState[finding.id] === 'WONT_FIX'
                             ? 'bg-yellow-500/20 text-yellow-400'
                             : 'text-zinc-600 hover:text-yellow-400 hover:bg-yellow-500/10'

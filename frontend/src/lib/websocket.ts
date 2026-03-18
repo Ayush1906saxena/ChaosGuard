@@ -2,6 +2,7 @@ import { ScanProgressUpdate } from './types';
 
 type MessageHandler = (update: ScanProgressUpdate) => void;
 type StatusHandler = (connected: boolean) => void;
+type ConnectionFailedHandler = () => void;
 
 const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080';
 
@@ -10,16 +11,23 @@ export class ScanWebSocket {
   private scanId: string;
   private onMessage: MessageHandler;
   private onStatusChange: StatusHandler;
+  private onConnectionFailed?: ConnectionFailedHandler;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
   private reconnectDelay = 1000;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private intentionallyClosed = false;
 
-  constructor(scanId: string, onMessage: MessageHandler, onStatusChange: StatusHandler) {
+  constructor(
+    scanId: string,
+    onMessage: MessageHandler,
+    onStatusChange: StatusHandler,
+    onConnectionFailed?: ConnectionFailedHandler
+  ) {
     this.scanId = scanId;
     this.onMessage = onMessage;
     this.onStatusChange = onStatusChange;
+    this.onConnectionFailed = onConnectionFailed;
   }
 
   connect(): void {
@@ -65,6 +73,7 @@ export class ScanWebSocket {
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('Max reconnection attempts reached');
+      this.onConnectionFailed?.();
       return;
     }
 
@@ -92,12 +101,14 @@ export class ScanWebSocket {
 export function useScanUpdates(
   scanId: string,
   onMessage: MessageHandler,
-  onStatusChange?: StatusHandler
+  onStatusChange?: StatusHandler,
+  onConnectionFailed?: ConnectionFailedHandler
 ): { connect: () => void; disconnect: () => void } {
   const ws = new ScanWebSocket(
     scanId,
     onMessage,
-    onStatusChange || (() => {})
+    onStatusChange || (() => {}),
+    onConnectionFailed
   );
 
   return {

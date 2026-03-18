@@ -36,6 +36,7 @@ export default function ScanProgress({ scanId, initialStatus, onComplete }: Scan
   const [connected, setConnected] = useState(false);
   const [recentFindings, setRecentFindings] = useState<Finding[]>([]);
   const [logMessages, setLogMessages] = useState<string[]>([]);
+  const [connectionLost, setConnectionLost] = useState(false);
 
   const handleMessage = useCallback(
     (update: ScanProgressUpdate) => {
@@ -58,7 +59,9 @@ export default function ScanProgress({ scanId, initialStatus, onComplete }: Scan
   );
 
   useEffect(() => {
-    const ws = new ScanWebSocket(scanId, handleMessage, setConnected);
+    const ws = new ScanWebSocket(scanId, handleMessage, setConnected, () => {
+      setConnectionLost(true);
+    });
     ws.connect();
     return () => ws.disconnect();
   }, [scanId, handleMessage]);
@@ -84,7 +87,7 @@ export default function ScanProgress({ scanId, initialStatus, onComplete }: Scan
   return (
     <div className="space-y-6">
       {/* Overall Progress Header */}
-      <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-6">
+      <div className="glass-card rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-zinc-100">{statusLabels[status]}</h3>
@@ -94,17 +97,19 @@ export default function ScanProgress({ scanId, initialStatus, onComplete }: Scan
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div
-              className={cn('w-2 h-2 rounded-full', connected ? 'bg-green-400' : 'bg-red-400')}
-            />
-            <span className="text-xs text-zinc-500">
-              {connected ? 'Live' : 'Reconnecting...'}
-            </span>
-            <span className="text-2xl font-bold text-zinc-100">{overallProgress}%</span>
+            <div className="flex items-center gap-2">
+              <div
+                className={cn('w-2 h-2 rounded-full', connected ? 'bg-green-400' : connectionLost ? 'bg-zinc-500' : 'bg-red-400 animate-pulse')}
+              />
+              <span className="text-xs text-zinc-500">
+                {connected ? 'Live' : connectionLost ? 'Disconnected' : 'Reconnecting...'}
+              </span>
+            </div>
+            <span className="text-2xl font-bold text-zinc-100 font-mono">{overallProgress}%</span>
           </div>
         </div>
 
-        <div className="w-full h-2 bg-zinc-700 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-white/[0.04] border border-white/[0.04] rounded-full overflow-hidden">
           <div
             className={cn(
               'h-full rounded-full transition-all duration-500',
@@ -115,12 +120,31 @@ export default function ScanProgress({ scanId, initialStatus, onComplete }: Scan
         </div>
       </div>
 
+      {/* Connection Lost Banner */}
+      {connectionLost && (
+        <div className="glass-card glow-red rounded-xl p-4 flex items-center justify-between animate-scale-in">
+          <div className="flex items-center gap-3">
+            <ExclamationCircleIcon className="w-5 h-5 text-red-400" />
+            <div>
+              <p className="text-sm text-zinc-200 font-medium">Connection lost</p>
+              <p className="text-xs text-zinc-500">Live updates are no longer available.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 text-xs font-medium bg-white/[0.06] border border-white/[0.08] text-zinc-300 rounded-lg hover:bg-white/[0.1] transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
+      )}
+
       {/* Agent Progress Bars */}
-      <div className="grid gap-3">
+      <div className="grid gap-3 stagger-children">
         {agents.map((agent) => (
           <div
             key={agent.agentName}
-            className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-4"
+            className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-4 hover:bg-white/[0.03] transition-colors"
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
@@ -134,7 +158,7 @@ export default function ScanProgress({ scanId, initialStatus, onComplete }: Scan
               </div>
               <div className="flex items-center gap-3">
                 {agent.findingsCount > 0 && (
-                  <span className="text-xs text-zinc-400 bg-zinc-700/50 px-2 py-0.5 rounded">
+                  <span className="text-xs text-zinc-400 bg-white/[0.04] border border-white/[0.06] px-2 py-0.5 rounded-md">
                     {agent.findingsCount} findings
                   </span>
                 )}
@@ -143,7 +167,7 @@ export default function ScanProgress({ scanId, initialStatus, onComplete }: Scan
                 </span>
               </div>
             </div>
-            <div className="w-full h-1.5 bg-zinc-700/50 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
               <div
                 className={cn('h-full rounded-full transition-all duration-500', {
                   'bg-green-500': agent.status === 'COMPLETE',
@@ -160,8 +184,11 @@ export default function ScanProgress({ scanId, initialStatus, onComplete }: Scan
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Live Findings Feed */}
-        <div className="bg-zinc-800/30 border border-zinc-700/30 rounded-xl p-4">
-          <h4 className="text-sm font-medium text-zinc-300 mb-3">Live Findings</h4>
+        <div className="glass-card rounded-xl p-4">
+          <h4 className="text-sm font-medium text-zinc-300 mb-3 flex items-center gap-2">
+            <div className="w-1 h-3 rounded-full bg-gradient-to-b from-red-500 to-orange-500" />
+            Live Findings
+          </h4>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {recentFindings.length === 0 ? (
               <p className="text-xs text-zinc-600 py-4 text-center">
@@ -171,7 +198,7 @@ export default function ScanProgress({ scanId, initialStatus, onComplete }: Scan
               recentFindings.map((finding, i) => (
                 <div
                   key={`${finding.id}-${i}`}
-                  className="flex items-start gap-2 p-2 rounded-lg bg-zinc-800/50 animate-fade-in"
+                  className="flex items-start gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/[0.04] animate-fade-in"
                 >
                   <SeverityBadge severity={finding.severity} size="sm" />
                   <div className="min-w-0 flex-1">
@@ -187,8 +214,11 @@ export default function ScanProgress({ scanId, initialStatus, onComplete }: Scan
         </div>
 
         {/* Activity Log */}
-        <div className="bg-zinc-800/30 border border-zinc-700/30 rounded-xl p-4">
-          <h4 className="text-sm font-medium text-zinc-300 mb-3">Activity Log</h4>
+        <div className="glass-card rounded-xl p-4">
+          <h4 className="text-sm font-medium text-zinc-300 mb-3 flex items-center gap-2">
+            <div className="w-1 h-3 rounded-full bg-gradient-to-b from-blue-500 to-purple-500" />
+            Activity Log
+          </h4>
           <div className="space-y-1 max-h-64 overflow-y-auto font-mono text-[11px]">
             {logMessages.length === 0 ? (
               <p className="text-xs text-zinc-600 py-4 text-center font-sans">

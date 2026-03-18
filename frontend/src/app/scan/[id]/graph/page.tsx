@@ -46,7 +46,7 @@ export default function GraphPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-6 py-4 text-sm text-red-400">
+        <div className="glass-card glow-red rounded-xl px-6 py-4 text-sm text-red-400">
           {error}
         </div>
       </div>
@@ -54,7 +54,7 @@ export default function GraphPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-100">Dependency Graph</h1>
@@ -63,13 +63,13 @@ export default function GraphPage() {
           </p>
         </div>
         <div className="flex items-center gap-4 text-xs text-zinc-500">
-          <span>{nodes.length} nodes</span>
-          <span>{edges.length} edges</span>
+          <span className="px-2.5 py-1 bg-white/[0.03] border border-white/[0.06] rounded-lg font-mono">{nodes.length} nodes</span>
+          <span className="px-2.5 py-1 bg-white/[0.03] border border-white/[0.06] rounded-lg font-mono">{edges.length} edges</span>
         </div>
       </div>
 
       {nodes.length === 0 ? (
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-12 text-center">
+        <div className="glass-card rounded-2xl p-12 text-center">
           <p className="text-zinc-500">No dependency data available for this scan.</p>
         </div>
       ) : (

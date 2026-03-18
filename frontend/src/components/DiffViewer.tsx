@@ -20,7 +20,6 @@ interface DiffLine {
 function computeDiff(original: string, fixed: string, startLine: number): DiffLine[] {
   const oldLines = original.split('\n');
   const newLines = fixed.split('\n');
-  const result: DiffLine[] = [];
 
   // Simple LCS-based diff
   const m = oldLines.length;
@@ -81,22 +80,22 @@ export default function DiffViewer({ originalCode, fixedCode, filePath, startLin
   const deletions = diffLines.filter((l) => l.type === 'remove').length;
 
   return (
-    <div className="rounded-xl border border-zinc-700/50 overflow-hidden">
+    <div className="rounded-xl border border-white/[0.06] overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-zinc-800/80 border-b border-zinc-700/50">
+      <div className="flex items-center justify-between px-4 py-2 bg-white/[0.03] border-b border-white/[0.04]">
         <div className="flex items-center gap-3">
           {filePath && (
             <span className="text-xs font-mono text-zinc-400">{filePath}</span>
           )}
-          <span className="text-xs text-green-400">+{additions}</span>
-          <span className="text-xs text-red-400">-{deletions}</span>
+          <span className="text-xs text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded-md">+{additions}</span>
+          <span className="text-xs text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded-md">-{deletions}</span>
         </div>
-        <div className="flex items-center gap-1 bg-zinc-900 rounded-lg p-0.5">
+        <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.04] rounded-lg p-0.5">
           <button
             onClick={() => setViewMode('unified')}
             className={cn(
               'px-2 py-1 text-[10px] rounded-md transition-colors',
-              viewMode === 'unified' ? 'bg-zinc-700 text-zinc-200' : 'text-zinc-500 hover:text-zinc-300'
+              viewMode === 'unified' ? 'bg-white/[0.08] text-zinc-200' : 'text-zinc-500 hover:text-zinc-300'
             )}
           >
             Unified
@@ -105,7 +104,7 @@ export default function DiffViewer({ originalCode, fixedCode, filePath, startLin
             onClick={() => setViewMode('split')}
             className={cn(
               'px-2 py-1 text-[10px] rounded-md transition-colors',
-              viewMode === 'split' ? 'bg-zinc-700 text-zinc-200' : 'text-zinc-500 hover:text-zinc-300'
+              viewMode === 'split' ? 'bg-white/[0.08] text-zinc-200' : 'text-zinc-500 hover:text-zinc-300'
             )}
           >
             Split
@@ -122,14 +121,14 @@ export default function DiffViewer({ originalCode, fixedCode, filePath, startLin
                 <tr
                   key={idx}
                   className={cn({
-                    'bg-red-500/10': line.type === 'remove',
-                    'bg-green-500/10': line.type === 'add',
+                    'bg-red-500/[0.07]': line.type === 'remove',
+                    'bg-green-500/[0.07]': line.type === 'add',
                   })}
                 >
-                  <td className="px-2 py-0.5 text-right text-zinc-600 select-none w-12 border-r border-zinc-800">
+                  <td className="px-2 py-0.5 text-right text-zinc-600 select-none w-12 border-r border-white/[0.04]">
                     {line.oldLineNum ?? ''}
                   </td>
-                  <td className="px-2 py-0.5 text-right text-zinc-600 select-none w-12 border-r border-zinc-800">
+                  <td className="px-2 py-0.5 text-right text-zinc-600 select-none w-12 border-r border-white/[0.04]">
                     {line.newLineNum ?? ''}
                   </td>
                   <td className="px-1 py-0.5 select-none w-6 text-center">
@@ -151,10 +150,10 @@ export default function DiffViewer({ originalCode, fixedCode, filePath, startLin
           </table>
         </div>
       ) : (
-        <div className="grid grid-cols-2 divide-x divide-zinc-700/50 overflow-x-auto">
+        <div className="grid grid-cols-2 divide-x divide-white/[0.04] overflow-x-auto">
           {/* Original */}
           <div>
-            <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-zinc-600 bg-zinc-800/50 border-b border-zinc-700/50">
+            <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-zinc-600 bg-white/[0.02] border-b border-white/[0.04]">
               Original
             </div>
             <table className="w-full text-xs font-mono">
@@ -164,9 +163,9 @@ export default function DiffViewer({ originalCode, fixedCode, filePath, startLin
                   .map((line, idx) => (
                     <tr
                       key={idx}
-                      className={cn({ 'bg-red-500/10': line.type === 'remove' })}
+                      className={cn({ 'bg-red-500/[0.07]': line.type === 'remove' })}
                     >
-                      <td className="px-2 py-0.5 text-right text-zinc-600 select-none w-10 border-r border-zinc-800">
+                      <td className="px-2 py-0.5 text-right text-zinc-600 select-none w-10 border-r border-white/[0.04]">
                         {line.oldLineNum ?? ''}
                       </td>
                       <td className="px-2 py-0.5 whitespace-pre">
@@ -181,7 +180,7 @@ export default function DiffViewer({ originalCode, fixedCode, filePath, startLin
           </div>
           {/* Fixed */}
           <div>
-            <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-zinc-600 bg-zinc-800/50 border-b border-zinc-700/50">
+            <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-zinc-600 bg-white/[0.02] border-b border-white/[0.04]">
               Fixed
             </div>
             <table className="w-full text-xs font-mono">
@@ -191,9 +190,9 @@ export default function DiffViewer({ originalCode, fixedCode, filePath, startLin
                   .map((line, idx) => (
                     <tr
                       key={idx}
-                      className={cn({ 'bg-green-500/10': line.type === 'add' })}
+                      className={cn({ 'bg-green-500/[0.07]': line.type === 'add' })}
                     >
-                      <td className="px-2 py-0.5 text-right text-zinc-600 select-none w-10 border-r border-zinc-800">
+                      <td className="px-2 py-0.5 text-right text-zinc-600 select-none w-10 border-r border-white/[0.04]">
                         {line.newLineNum ?? ''}
                       </td>
                       <td className="px-2 py-0.5 whitespace-pre">

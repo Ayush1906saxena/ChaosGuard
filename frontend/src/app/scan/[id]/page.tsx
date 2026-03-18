@@ -3,11 +3,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import ScanProgress from '@/components/ScanProgress';
-import SeverityBadge from '@/components/SeverityBadge';
 import TierBadge from '@/components/TierBadge';
 import { getScan } from '@/lib/api';
 import { formatDate, extractRepoName } from '@/lib/utils';
 import type { Scan } from '@/lib/types';
+import {
+  CheckCircleIcon,
+  XCircleIcon,
+} from '@heroicons/react/24/outline';
 
 export default function ScanOverviewPage() {
   const params = useParams();
@@ -26,21 +29,16 @@ export default function ScanOverviewPage() {
 
   useEffect(() => {
     loadScan();
-    // Poll for status updates every 5 seconds while scan is in progress
-    const interval = setInterval(() => {
-      loadScan();
-    }, 5000);
+    const interval = setInterval(() => { loadScan(); }, 5000);
     return () => clearInterval(interval);
   }, [loadScan]);
 
-  const handleScanComplete = useCallback(() => {
-    loadScan();
-  }, [loadScan]);
+  const handleScanComplete = useCallback(() => { loadScan(); }, [loadScan]);
 
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-6 py-4 text-sm text-red-400 max-w-md text-center">
+        <div className="glass-card glow-red rounded-xl px-6 py-4 text-sm text-red-400 max-w-md text-center">
           {error}
         </div>
       </div>
@@ -62,19 +60,19 @@ export default function ScanOverviewPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 animate-fade-in">
       {/* Scan Info Header */}
-      <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
+      <div className="glass-card rounded-2xl p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-zinc-100 mb-1">
               {extractRepoName(scan.repoUrl)}
             </h1>
-            <p className="text-sm text-zinc-500 font-mono">{scan.repoUrl}</p>
+            <p className="text-sm text-zinc-600 font-mono">{scan.repoUrl}</p>
           </div>
           <div className="flex items-center gap-3">
             <TierBadge tier={scan.tier} />
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-zinc-600">
               Started {formatDate(scan.createdAt)}
             </span>
           </div>
@@ -85,16 +83,16 @@ export default function ScanOverviewPage() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const meta = scan.repoMetadata as any;
           return (
-            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 stagger-children">
               {[
                 { label: 'Language', value: meta.primaryLanguage || meta.language || 'Unknown' },
                 { label: 'Files', value: (meta.sourceFileCount || meta.fileCount || 0).toLocaleString() },
                 { label: 'Total Files', value: (meta.totalFiles || meta.totalLines || 0).toLocaleString() },
                 { label: 'Branch', value: scan.branch },
               ].map((item) => (
-                <div key={item.label} className="bg-zinc-800/50 rounded-lg px-3 py-2">
-                  <p className="text-[10px] text-zinc-500 uppercase tracking-wider">{item.label}</p>
-                  <p className="text-sm text-zinc-200 mt-0.5 truncate">{item.value}</p>
+                <div key={item.label} className="bg-white/[0.02] border border-white/[0.04] rounded-xl px-4 py-3">
+                  <p className="text-[10px] text-zinc-600 uppercase tracking-wider font-medium">{item.label}</p>
+                  <p className="text-sm text-zinc-200 mt-1 truncate font-medium">{item.value}</p>
                 </div>
               ))}
             </div>
@@ -103,18 +101,18 @@ export default function ScanOverviewPage() {
 
         {/* Summary Cards */}
         {scan.summary && (
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-6 gap-3 stagger-children">
             {[
-              { label: 'Total', value: scan.summary.totalFindings, color: 'text-zinc-200' },
+              { label: 'Total', value: scan.summary.totalFindings, color: 'text-zinc-100' },
               { label: 'Critical', value: scan.summary.criticalCount, color: 'text-red-400' },
               { label: 'High', value: scan.summary.highCount, color: 'text-orange-400' },
               { label: 'Medium', value: scan.summary.mediumCount, color: 'text-yellow-400' },
               { label: 'Low', value: scan.summary.lowCount, color: 'text-blue-400' },
-              { label: 'Fixes', value: scan.summary.fixesGenerated, color: 'text-green-400' },
+              { label: 'Fixes', value: scan.summary.fixesGenerated, color: 'text-emerald-400' },
             ].map((item) => (
-              <div key={item.label} className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg px-3 py-3 text-center">
-                <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-wider mt-1">{item.label}</p>
+              <div key={item.label} className="bg-white/[0.02] border border-white/[0.04] rounded-xl px-3 py-3.5 text-center">
+                <p className={`text-2xl font-bold ${item.color} animate-count-up`}>{item.value}</p>
+                <p className="text-[10px] text-zinc-600 uppercase tracking-wider mt-1 font-medium">{item.label}</p>
               </div>
             ))}
           </div>
@@ -123,59 +121,46 @@ export default function ScanOverviewPage() {
 
       {/* Live Progress */}
       {scan.status !== 'COMPLETE' && scan.status !== 'FAILED' && (
-        <ScanProgress
-          scanId={scanId}
-          initialStatus={scan.status}
-          onComplete={handleScanComplete}
-        />
+        <ScanProgress scanId={scanId} initialStatus={scan.status} onComplete={handleScanComplete} />
       )}
 
       {/* Completed Status */}
       {scan.status === 'COMPLETE' && scan.summary && (
-        <div className="bg-green-500/5 border border-green-500/20 rounded-2xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+        <div className="glass-card glow-green rounded-2xl p-6 border-emerald-500/10">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <CheckCircleIcon className="w-6 h-6 text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-green-400">Scan Complete</h3>
+              <h3 className="text-lg font-semibold text-emerald-400">Scan Complete</h3>
               <p className="text-sm text-zinc-500">
-                {scan.summary.agentsCompleted} agents completed | {scan.summary.totalFindings} findings
+                {scan.summary.agentsCompleted} agents completed &middot; {scan.summary.totalFindings} findings
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-            <div className="bg-zinc-800/30 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-zinc-200">{scan.summary.attackChainsFound}</p>
-              <p className="text-[10px] text-zinc-500 uppercase">Attack Chains</p>
-            </div>
-            <div className="bg-zinc-800/30 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-zinc-200">{scan.summary.chaosScenarios}</p>
-              <p className="text-[10px] text-zinc-500 uppercase">Chaos Scenarios</p>
-            </div>
-            <div className="bg-zinc-800/30 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-zinc-200">{scan.summary.fixesGenerated}</p>
-              <p className="text-[10px] text-zinc-500 uppercase">Fixes Generated</p>
-            </div>
-            <div className="bg-zinc-800/30 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-zinc-200">{scan.summary.totalAgents}</p>
-              <p className="text-[10px] text-zinc-500 uppercase">Agents Used</p>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger-children">
+            {[
+              { label: 'Attack Chains', value: scan.summary.attackChainsFound },
+              { label: 'Chaos Scenarios', value: scan.summary.chaosScenarios },
+              { label: 'Fixes Generated', value: scan.summary.fixesGenerated },
+              { label: 'Agents Used', value: scan.summary.totalAgents },
+            ].map((item) => (
+              <div key={item.label} className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-4 text-center">
+                <p className="text-xl font-bold text-zinc-200">{item.value}</p>
+                <p className="text-[10px] text-zinc-600 uppercase tracking-wider mt-1 font-medium">{item.label}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* Failed Status */}
       {scan.status === 'FAILED' && (
-        <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6">
+        <div className="glass-card glow-red rounded-2xl p-6 border-red-500/10">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+              <XCircleIcon className="w-6 h-6 text-red-400" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-red-400">Scan Failed</h3>

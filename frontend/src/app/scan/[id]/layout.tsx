@@ -7,26 +7,31 @@ import { getScan } from '@/lib/api';
 import { extractRepoName } from '@/lib/utils';
 import type { Scan, ScanStatus } from '@/lib/types';
 
-const statusConfig: Record<ScanStatus, { label: string; color: string }> = {
-  QUEUED: { label: 'Queued', color: 'bg-zinc-500' },
-  CLONING: { label: 'Cloning', color: 'bg-blue-500 animate-pulse' },
-  CLONING_COMPLETE: { label: 'Cloned', color: 'bg-blue-500' },
-  INDEXING: { label: 'Indexing', color: 'bg-blue-500 animate-pulse' },
-  INDEXING_COMPLETE: { label: 'Indexed', color: 'bg-blue-500' },
-  ANALYZING: { label: 'Analyzing', color: 'bg-purple-500 animate-pulse' },
-  GENERATING_FIXES: { label: 'Generating Fixes', color: 'bg-purple-500 animate-pulse' },
-  COMPLETE: { label: 'Complete', color: 'bg-green-500' },
-  FAILED: { label: 'Failed', color: 'bg-red-500' },
+const statusConfig: Record<ScanStatus, { label: string; color: string; active: boolean }> = {
+  QUEUED: { label: 'Queued', color: 'bg-zinc-500', active: false },
+  CLONING: { label: 'Cloning', color: 'bg-blue-500', active: true },
+  CLONING_COMPLETE: { label: 'Cloned', color: 'bg-blue-500', active: false },
+  INDEXING: { label: 'Indexing', color: 'bg-blue-500', active: true },
+  INDEXING_COMPLETE: { label: 'Indexed', color: 'bg-blue-500', active: false },
+  ANALYZING: { label: 'Analyzing', color: 'bg-purple-500', active: true },
+  GENERATING_FIXES: { label: 'Generating Fixes', color: 'bg-purple-500', active: true },
+  COMPLETE: { label: 'Complete', color: 'bg-emerald-500', active: false },
+  FAILED: { label: 'Failed', color: 'bg-red-500', active: false },
 };
 
 export default function ScanLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const scanId = params.id as string;
   const [scan, setScan] = useState<Scan | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!scanId) return;
-    getScan(scanId).then(setScan).catch(() => {});
+    getScan(scanId)
+      .then(setScan)
+      .catch((err) => {
+        setScanError(err instanceof Error ? err.message : 'Failed to load scan');
+      });
   }, [scanId]);
 
   const isSiege = scan?.tier === 'SIEGE';
@@ -37,26 +42,46 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
       <Sidebar scanId={scanId} isSiege={isSiege} />
 
       <main className="flex-1 lg:ml-64">
+        {/* Scan Error Banner */}
+        {scanError && (
+          <div className="sticky top-0 z-20 bg-red-500/10 border-b border-red-500/20 px-6 py-3">
+            <div className="flex items-center gap-3 max-w-7xl mx-auto">
+              <span className="text-sm text-red-400">{scanError}</span>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-xs text-red-300 underline hover:text-red-200"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Scan Header Bar */}
         {scan && (
-          <div className="sticky top-0 z-20 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800 px-6 py-3">
+          <div className="sticky top-0 z-20 bg-[#050507]/80 backdrop-blur-xl border-b border-white/[0.04] px-6 py-3">
             <div className="flex items-center justify-between max-w-7xl mx-auto">
               <div className="flex items-center gap-4">
                 <h2 className="text-sm font-semibold text-zinc-200">
                   {extractRepoName(scan.repoUrl)}
                 </h2>
-                <span className="text-xs text-zinc-500 font-mono">
+                <span className="text-xs text-zinc-600 font-mono px-2 py-0.5 rounded-md bg-white/[0.03]">
                   {scan.branch}
                 </span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 {statusInfo && (
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${statusInfo.color}`} />
+                    <div className="relative flex h-2 w-2">
+                      {statusInfo.active && (
+                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${statusInfo.color} opacity-75`} />
+                      )}
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${statusInfo.color}`} />
+                    </div>
                     <span className="text-xs text-zinc-400">{statusInfo.label}</span>
                   </div>
                 )}
-                <span className="text-[10px] text-zinc-600 font-mono">
+                <span className="text-[10px] text-zinc-700 font-mono">
                   {scanId.slice(0, 8)}
                 </span>
               </div>

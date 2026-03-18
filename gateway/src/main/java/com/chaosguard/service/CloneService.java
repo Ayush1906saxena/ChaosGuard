@@ -120,14 +120,72 @@ public class CloneService {
 
         } catch (Exception e) {
             log.error("Clone failed for scan {}: {}", scanId, e.getMessage(), e);
-            scanService.updateScanStatus(scanUuid, ScanStatus.FAILED, "Clone failed: " + e.getMessage());
+            String errorMsg = classifyCloneError(e);
+            scanService.updateScanStatus(scanUuid, ScanStatus.FAILED, errorMsg);
             ack.acknowledge();
         }
+    }
+
+    private String classifyCloneError(Exception e) {
+        String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+        if (msg.contains("not found") || msg.contains("repository not found") || msg.contains("does not exist")) {
+            return "Repository not found. Please check the URL is correct and the repository is public.";
+        }
+        if (msg.contains("authentication") || msg.contains("auth") || msg.contains("401") || msg.contains("403")) {
+            return "Authentication failed. The repository may be private or require credentials.";
+        }
+        if (msg.contains("branch") || msg.contains("ref not found") || msg.contains("cannot be resolved")) {
+            return "Branch not found. " + e.getMessage();
+        }
+        if (msg.contains("timeout") || msg.contains("timed out") || msg.contains("connection refused")) {
+            return "Network error: Could not connect to the repository. Please check your connection and try again.";
+        }
+        if (e instanceof IllegalStateException) {
+            return e.getMessage();
+        }
+        return "Clone failed: " + e.getMessage();
+    }
     }
 
     private void cloneRepository(String repoUrl, String branch, File targetDir) throws GitAPIException {
         log.info("Cloning {} branch {} to {}", repoUrl, branch, targetDir.getAbsolutePath());
 
+        try {
+            doClone(repoUrl, branch, targetDir);
+            log.info("Clone completed for {} on branch {}", repoUrl, branch);
+        } catch (GitAPIException e) {
+            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            // If the branch wasn't found, try common fallbacks
+            if (msg.contains("remote branch") || msg.contains("not found") || msg.contains("cannot be resolved")
+                    || msg.contains("ref not found") || msg.contains("no such ref")) {
+                String fallback = branch.equals("main") ? "master" : "main";
+                log.warn("Branch '{}' not found for {}, trying fallback '{}'", branch, repoUrl, fallback);
+
+                // Clean up failed clone directory before retry
+                if (targetDir.exists()) {
+                    try {
+                        deleteDirectory(targetDir.toPath());
+                    } catch (IOException ignored) {
+                        // best-effort cleanup
+                    }
+                    targetDir.mkdirs();
+                }
+
+                try {
+                    doClone(repoUrl, fallback, targetDir);
+                    log.info("Clone completed for {} on fallback branch {}", repoUrl, fallback);
+                } catch (GitAPIException fallbackEx) {
+                    log.error("Fallback branch '{}' also failed for {}: {}", fallback, repoUrl, fallbackEx.getMessage());
+                    throw new GitAPIException("Branch '" + branch + "' not found, and fallback '" + fallback + "' also failed. " +
+                            "Please verify the repository URL and branch name.") {};
+                }
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    private void doClone(String repoUrl, String branch, File targetDir) throws GitAPIException {
         CloneCommand cloneCommand = Git.cloneRepository()
                 .setURI(repoUrl)
                 .setDirectory(targetDir)
@@ -136,7 +194,7 @@ public class CloneService {
                 .setCloneAllBranches(false);
 
         try (Git git = cloneCommand.call()) {
-            log.info("Clone completed for {}", repoUrl);
+            // clone done
         }
     }
 

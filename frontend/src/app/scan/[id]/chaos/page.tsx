@@ -14,6 +14,15 @@ import {
 import SeverityBadge from '@/components/SeverityBadge';
 import { cn } from '@/lib/utils';
 import type { ChaosScenario, ChaosExperiment, Severity, ExperimentStatus } from '@/lib/types';
+import {
+  StopIcon,
+  InformationCircleIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  BoltIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from '@heroicons/react/24/outline';
 
 const impactColors: Record<Severity, string> = {
   CRITICAL: 'bg-red-500',
@@ -38,19 +47,19 @@ const phaseLabels: Partial<Record<ExperimentStatus, string>> = {
 
 function ResilienceGauge({ score }: { score: number }) {
   const color = score >= 80 ? 'text-green-400' : score >= 60 ? 'text-yellow-400' : score >= 40 ? 'text-orange-400' : 'text-red-400';
-  const bgColor = score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-yellow-500' : score >= 40 ? 'bg-orange-500' : 'bg-red-500';
+  const glowColor = score >= 80 ? 'drop-shadow-[0_0_8px_rgba(74,222,128,0.3)]' : score >= 60 ? 'drop-shadow-[0_0_8px_rgba(250,204,21,0.3)]' : score >= 40 ? 'drop-shadow-[0_0_8px_rgba(251,146,60,0.3)]' : 'drop-shadow-[0_0_8px_rgba(248,113,113,0.3)]';
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-28 h-28">
+      <div className={cn('relative w-28 h-28', glowColor)}>
         <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="42" fill="none" stroke="#27272a" strokeWidth="8" />
+          <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="8" />
           <circle
             cx="50" cy="50" r="42" fill="none"
             stroke="currentColor"
             strokeWidth="8"
             strokeDasharray={`${score * 2.64} ${264 - score * 2.64}`}
             strokeLinecap="round"
-            className={color}
+            className={cn(color, 'transition-all duration-1000')}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
@@ -74,9 +83,9 @@ function ExperimentCard({ experiment, onApprove, onReject, onAbort, scanId }: {
 
   return (
     <div className={cn(
-      'bg-zinc-900/70 border rounded-2xl overflow-hidden',
-      isActive ? 'border-amber-500/50 shadow-lg shadow-amber-500/5' :
-      isComplete ? 'border-zinc-700' : 'border-zinc-800'
+      'glass-card rounded-2xl overflow-hidden',
+      isActive ? 'glow-orange border-amber-500/20' :
+      isComplete ? 'glow-green border-emerald-500/10' : ''
     )}>
       {/* Header */}
       <div className="p-6">
@@ -89,12 +98,12 @@ function ExperimentCard({ experiment, onApprove, onReject, onAbort, scanId }: {
               </div>
             )}
             <span className={cn(
-              'px-3 py-1 text-xs font-medium rounded-full uppercase tracking-wider',
-              experiment.status === 'COMPLETED' ? 'bg-green-500/15 text-green-400' :
-              experiment.status === 'FAILED' || experiment.status === 'ERROR' ? 'bg-red-500/15 text-red-400' :
-              experiment.status === 'ABORTED' ? 'bg-zinc-500/15 text-zinc-400' :
-              experiment.status === 'PENDING_APPROVAL' ? 'bg-purple-500/15 text-purple-400' :
-              'bg-amber-500/15 text-amber-400'
+              'px-3 py-1 text-xs font-medium rounded-lg uppercase tracking-wider border',
+              experiment.status === 'COMPLETED' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+              experiment.status === 'FAILED' || experiment.status === 'ERROR' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+              experiment.status === 'ABORTED' ? 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' :
+              experiment.status === 'PENDING_APPROVAL' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+              'bg-amber-500/10 text-amber-400 border-amber-500/20'
             )}>
               {experiment.status.replace(/_/g, ' ')}
             </span>
@@ -104,12 +113,9 @@ function ExperimentCard({ experiment, onApprove, onReject, onAbort, scanId }: {
           {isActive && experiment.status !== 'PENDING_APPROVAL' && (
             <button
               onClick={() => onAbort(scanId)}
-              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-lg transition-colors flex items-center gap-2 animate-pulse"
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-red-500/20 hover:shadow-red-500/40"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-              </svg>
+              <StopIcon className="w-4 h-4" />
               EMERGENCY STOP
             </button>
           )}
@@ -117,7 +123,7 @@ function ExperimentCard({ experiment, onApprove, onReject, onAbort, scanId }: {
 
         {/* Phase indicator */}
         {isActive && (
-          <div className="mb-4 p-3 bg-zinc-800/50 rounded-xl">
+          <div className="mb-4 p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl">
             <p className="text-sm text-zinc-300">
               {phaseLabels[experiment.status] || experiment.status}
             </p>
@@ -129,14 +135,16 @@ function ExperimentCard({ experiment, onApprove, onReject, onAbort, scanId }: {
           <div className="flex gap-3 mb-4">
             <button
               onClick={() => onApprove(experiment.id)}
-              className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-xl transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-emerald-500/20"
             >
+              <CheckCircleIcon className="w-5 h-5" />
               Approve & Execute
             </button>
             <button
               onClick={() => onReject(experiment.id)}
-              className="flex-1 px-4 py-3 bg-zinc-700 hover:bg-zinc-600 text-zinc-200 font-semibold rounded-xl transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] text-zinc-200 font-semibold rounded-xl transition-colors"
             >
+              <XCircleIcon className="w-5 h-5" />
               Reject
             </button>
           </div>
@@ -151,7 +159,7 @@ function ExperimentCard({ experiment, onApprove, onReject, onAbort, scanId }: {
                 <span key={idx} className={cn(
                   'px-3 py-1.5 text-xs rounded-lg border',
                   fault.success ? 'bg-red-500/10 border-red-500/20 text-red-400' :
-                  'bg-zinc-800 border-zinc-700 text-zinc-500'
+                  'bg-white/[0.02] border-white/[0.04] text-zinc-500'
                 )}>
                   {fault.fault_type.replace(/_/g, ' ')} → {fault.target_service}
                   {fault.success ? ' ✓' : ' ✗'}
@@ -170,7 +178,7 @@ function ExperimentCard({ experiment, onApprove, onReject, onAbort, scanId }: {
             </div>
 
             {/* Metrics comparison */}
-            <div className="space-y-3">
+            <div className="space-y-3 bg-white/[0.02] border border-white/[0.04] rounded-xl p-4">
               <h4 className="text-xs text-zinc-500 uppercase tracking-wider">Availability</h4>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -193,7 +201,7 @@ function ExperimentCard({ experiment, onApprove, onReject, onAbort, scanId }: {
             </div>
 
             {/* Response times */}
-            <div className="space-y-3">
+            <div className="space-y-3 bg-white/[0.02] border border-white/[0.04] rounded-xl p-4">
               <h4 className="text-xs text-zinc-500 uppercase tracking-wider">Response Time</h4>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
@@ -217,9 +225,9 @@ function ExperimentCard({ experiment, onApprove, onReject, onAbort, scanId }: {
         {experiment.verdict && (
           <div className={cn(
             'mt-4 p-4 rounded-xl border',
-            experiment.resilienceScore && experiment.resilienceScore >= 80 ? 'bg-green-500/5 border-green-500/20' :
-            experiment.resilienceScore && experiment.resilienceScore >= 60 ? 'bg-yellow-500/5 border-yellow-500/20' :
-            'bg-red-500/5 border-red-500/20'
+            experiment.resilienceScore && experiment.resilienceScore >= 80 ? 'bg-green-500/[0.03] border-green-500/15' :
+            experiment.resilienceScore && experiment.resilienceScore >= 60 ? 'bg-yellow-500/[0.03] border-yellow-500/15' :
+            'bg-red-500/[0.03] border-red-500/15'
           )}>
             <p className="text-sm text-zinc-300">{experiment.verdict}</p>
           </div>
@@ -242,7 +250,7 @@ function ExperimentCard({ experiment, onApprove, onReject, onAbort, scanId }: {
 
         {/* Error */}
         {(experiment.status === 'ERROR' || experiment.status === 'FAILED') && (
-          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+          <div className="mt-4 p-3 bg-red-500/[0.05] border border-red-500/15 rounded-xl">
             <p className="text-sm text-red-400">Experiment failed</p>
           </div>
         )}
@@ -258,8 +266,10 @@ export default function ChaosPage() {
   const [experiments, setExperiments] = useState<ChaosExperiment[]>([]);
   const [chaosAvailable, setChaosAvailable] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [startingExperiment, setStartingExperiment] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -271,8 +281,8 @@ export default function ChaosPage() {
       setScenarios(scenarioData);
       setChaosAvailable(availData.available);
       setExperiments(Array.isArray(expData) ? expData : []);
-    } catch {
-      // handle silently
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load chaos data');
     } finally {
       setLoading(false);
     }
@@ -301,14 +311,19 @@ export default function ChaosPage() {
     return () => clearInterval(interval);
   }, [experiments, scanId]);
 
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setActionFeedback({ type, message });
+    setTimeout(() => setActionFeedback(null), 5000);
+  };
+
   const handleStartExperiment = async (scenarioId: string) => {
     setStartingExperiment(scenarioId);
     try {
       await startChaosExperiment(scanId, scenarioId, false);
-      // Reload experiments after a brief delay
+      showFeedback('success', 'Chaos experiment started. Waiting for provisioning...');
       setTimeout(loadData, 2000);
     } catch (err) {
-      console.error('Failed to start experiment:', err);
+      showFeedback('error', err instanceof Error ? err.message : 'Failed to start experiment');
     } finally {
       setStartingExperiment(null);
     }
@@ -317,27 +332,30 @@ export default function ChaosPage() {
   const handleApprove = async (experimentId: string) => {
     try {
       await approveChaosExperiment(experimentId);
+      showFeedback('success', 'Experiment approved. Injecting faults...');
       setTimeout(loadData, 1000);
     } catch (err) {
-      console.error('Failed to approve:', err);
+      showFeedback('error', err instanceof Error ? err.message : 'Failed to approve experiment');
     }
   };
 
   const handleReject = async (experimentId: string) => {
     try {
       await rejectChaosExperiment(experimentId);
+      showFeedback('success', 'Experiment rejected.');
       setTimeout(loadData, 1000);
     } catch (err) {
-      console.error('Failed to reject:', err);
+      showFeedback('error', err instanceof Error ? err.message : 'Failed to reject experiment');
     }
   };
 
   const handleAbort = async () => {
     try {
       await abortChaosExperiments(scanId);
+      showFeedback('success', 'All experiments aborted.');
       setTimeout(loadData, 2000);
     } catch (err) {
-      console.error('Failed to abort:', err);
+      showFeedback('error', err instanceof Error ? err.message : 'Failed to abort experiments');
     }
   };
 
@@ -355,8 +373,22 @@ export default function ChaosPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-red-400 text-sm mb-2">Failed to load chaos data</p>
+          <p className="text-zinc-500 text-xs mb-4">{error}</p>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 text-xs bg-white/[0.04] border border-white/[0.06] text-zinc-400 rounded-lg hover:bg-white/[0.08] transition-colors">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-zinc-100">Chaos Engineering</h1>
         <p className="text-sm text-zinc-500 mt-1">
@@ -364,11 +396,28 @@ export default function ChaosPage() {
         </p>
       </div>
 
+      {/* Action Feedback Toast */}
+      {actionFeedback && (
+        <div
+          className={cn(
+            'glass-card rounded-xl px-5 py-3 text-sm animate-scale-in flex items-center justify-between',
+            actionFeedback.type === 'success'
+              ? 'glow-green border-emerald-500/20 text-emerald-400'
+              : 'glow-red border-red-500/20 text-red-400'
+          )}
+        >
+          <span>{actionFeedback.message}</span>
+          <button onClick={() => setActionFeedback(null)} className="text-zinc-500 hover:text-zinc-300 ml-4">
+            <XCircleIcon className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Active / Past Experiments */}
       {experiments.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-zinc-200 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
             Chaos Experiments
           </h2>
           {experiments.map((exp) => (
@@ -386,12 +435,15 @@ export default function ChaosPage() {
 
       {/* Scenarios */}
       {scenarios.length === 0 ? (
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-12 text-center">
+        <div className="glass-card rounded-2xl p-12 text-center">
           <p className="text-zinc-500">No chaos scenarios generated for this scan.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-zinc-200">Detected Scenarios</h2>
+          <h2 className="text-lg font-semibold text-zinc-200 flex items-center gap-2">
+            <div className="w-1 h-4 rounded-full bg-gradient-to-b from-red-500 to-orange-500" />
+            Detected Scenarios
+          </h2>
           {scenarios.map((scenario) => {
             const isExpanded = expandedId === scenario.id;
             const blastPercentage = scenario.blastRadius.length > 0
@@ -405,7 +457,7 @@ export default function ChaosPage() {
             return (
               <div
                 key={scenario.id}
-                className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden"
+                className="glass-card glass-card-hover rounded-2xl overflow-hidden"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between p-6">
@@ -415,7 +467,7 @@ export default function ChaosPage() {
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <SeverityBadge severity={scenario.severity} />
-                      <span className="px-2 py-0.5 text-[10px] rounded-full bg-zinc-700/50 text-zinc-400 uppercase tracking-wider">
+                      <span className="px-2.5 py-0.5 text-[10px] rounded-lg bg-white/[0.04] border border-white/[0.06] text-zinc-400 uppercase tracking-wider">
                         {scenario.scenarioType.replace(/_/g, ' ')}
                       </span>
                     </div>
@@ -438,10 +490,10 @@ export default function ChaosPage() {
                         onClick={() => handleStartExperiment(scenario.id)}
                         disabled={startingExperiment === scenario.id}
                         className={cn(
-                          'px-4 py-2 text-sm font-semibold rounded-lg transition-all',
+                          'flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all',
                           startingExperiment === scenario.id
-                            ? 'bg-zinc-700 text-zinc-400 cursor-wait'
-                            : 'bg-amber-600 hover:bg-amber-500 text-white hover:shadow-lg hover:shadow-amber-500/20'
+                            ? 'bg-white/[0.03] text-zinc-400 cursor-wait'
+                            : 'bg-gradient-to-r from-amber-600 to-orange-600 text-white hover:from-amber-500 hover:to-orange-500 shadow-lg shadow-amber-500/20'
                         )}
                       >
                         {startingExperiment === scenario.id ? (
@@ -453,35 +505,46 @@ export default function ChaosPage() {
                             Starting...
                           </span>
                         ) : (
-                          'Execute Chaos'
+                          <>
+                            <BoltIcon className="w-4 h-4" />
+                            Execute Chaos
+                          </>
                         )}
                       </button>
                     )}
-                    <span className="text-zinc-500 text-xl">
-                      {isExpanded ? '\u25B2' : '\u25BC'}
-                    </span>
+                    {isExpanded ? (
+                      <ChevronUpIcon className="w-5 h-5 text-zinc-500" />
+                    ) : (
+                      <ChevronDownIcon className="w-5 h-5 text-zinc-500" />
+                    )}
                   </div>
                 </div>
 
-                {/* Expanded details — same as before */}
+                {/* Expanded details */}
                 {isExpanded && (
-                  <div className="border-t border-zinc-800 p-6 space-y-6">
+                  <div className="border-t border-white/[0.04] p-6 space-y-6 animate-slide-up">
                     {scenario.trigger && (
-                      <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-4">
-                        <h4 className="text-sm font-semibold text-amber-400 mb-1">Trigger</h4>
+                      <div className="bg-amber-500/[0.03] border border-amber-500/10 rounded-xl p-4">
+                        <h4 className="text-sm font-semibold text-amber-400 mb-1 flex items-center gap-2">
+                          <div className="w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-yellow-500" />
+                          Trigger
+                        </h4>
                         <p className="text-sm text-zinc-300">{scenario.trigger}</p>
                       </div>
                     )}
 
                     {scenario.blastRadius && scenario.blastRadius.length > 0 && (
                       <div>
-                        <h4 className="text-sm font-semibold text-zinc-300 mb-3">Blast Radius</h4>
+                        <h4 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
+                          <div className="w-1 h-4 rounded-full bg-gradient-to-b from-red-500 to-orange-500" />
+                          Blast Radius
+                        </h4>
                         <div className="mb-4">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-xs text-zinc-500">Impact spread</span>
                             <span className="text-xs font-mono text-zinc-400">{blastPercentage}% critical/high</span>
                           </div>
-                          <div className="h-3 bg-zinc-800 rounded-full overflow-hidden">
+                          <div className="h-3 bg-white/[0.03] border border-white/[0.04] rounded-full overflow-hidden">
                             <div
                               className={cn(
                                 'h-full rounded-full transition-all duration-700',
@@ -497,7 +560,7 @@ export default function ChaosPage() {
                           {scenario.blastRadius.map((node, idx) => (
                             <div
                               key={idx}
-                              className="flex items-center justify-between bg-zinc-800/50 border border-zinc-700/30 rounded-lg px-4 py-2"
+                              className="flex items-center justify-between bg-white/[0.02] border border-white/[0.04] rounded-lg px-4 py-2"
                             >
                               <div className="flex items-center gap-3">
                                 <div className={cn('w-2.5 h-2.5 rounded-full', impactColors[node.impact])} />
@@ -515,12 +578,15 @@ export default function ChaosPage() {
 
                     {scenario.affectedComponents && scenario.affectedComponents.length > 0 && (
                       <div>
-                        <h4 className="text-sm font-semibold text-zinc-300 mb-3">Affected Services</h4>
+                        <h4 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
+                          <div className="w-1 h-4 rounded-full bg-gradient-to-b from-blue-500 to-purple-500" />
+                          Affected Services
+                        </h4>
                         <div className="flex flex-wrap gap-2">
                           {scenario.affectedComponents.map((component) => (
                             <span
                               key={component}
-                              className="px-3 py-1 text-xs bg-zinc-800 border border-zinc-700/50 rounded-lg text-zinc-300"
+                              className="px-3 py-1 text-xs bg-white/[0.03] border border-white/[0.06] rounded-lg text-zinc-300"
                             >
                               {component}
                             </span>
@@ -531,16 +597,17 @@ export default function ChaosPage() {
 
                     {scenario.missingSafeguards && scenario.missingSafeguards.length > 0 && (
                       <div>
-                        <h4 className="text-sm font-semibold text-zinc-300 mb-3">Missing Safeguards</h4>
+                        <h4 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
+                          <div className="w-1 h-4 rounded-full bg-gradient-to-b from-red-500 to-pink-500" />
+                          Missing Safeguards
+                        </h4>
                         <div className="space-y-2">
                           {scenario.missingSafeguards.map((safeguard, idx) => (
                             <div
                               key={idx}
-                              className="flex items-start gap-3 p-3 bg-red-500/5 border border-red-500/10 rounded-lg"
+                              className="flex items-start gap-3 p-3 bg-red-500/[0.03] border border-red-500/10 rounded-lg"
                             >
-                              <svg className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                              </svg>
+                              <XCircleIcon className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
                               <span className="text-sm text-zinc-300">{safeguard}</span>
                             </div>
                           ))}
@@ -550,7 +617,10 @@ export default function ChaosPage() {
 
                     {scenario.timeline && scenario.timeline.length > 0 && (
                       <div>
-                        <h4 className="text-sm font-semibold text-zinc-300 mb-3">Failure Timeline</h4>
+                        <h4 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
+                          <div className="w-1 h-4 rounded-full bg-gradient-to-b from-yellow-500 to-orange-500" />
+                          Failure Timeline
+                        </h4>
                         <div className="space-y-2">
                           {scenario.timeline.map((event, idx) => (
                             <div key={idx} className="flex items-start gap-3 text-sm">
@@ -577,10 +647,8 @@ export default function ChaosPage() {
 
       {/* Info banner when chaos execution is not available */}
       {chaosAvailable === false && scenarios.length > 0 && (
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-xl p-4 flex items-start gap-3">
-          <svg className="w-5 h-5 text-zinc-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+        <div className="glass-card rounded-xl p-4 flex items-start gap-3">
+          <InformationCircleIcon className="w-5 h-5 text-zinc-400 mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-sm text-zinc-300 font-medium">Live chaos execution unavailable</p>
             <p className="text-xs text-zinc-500 mt-1">

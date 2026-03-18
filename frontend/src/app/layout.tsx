@@ -2,7 +2,10 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+});
 
 export const metadata: Metadata = {
   title: 'ChaosGuard AI - Autonomous Security Platform',
@@ -16,8 +19,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} bg-zinc-950 text-zinc-100 antialiased`}>
-        {children}
+      <body className={`${inter.className} bg-[#050507] text-zinc-100 antialiased`}>
+        {/* Ambient gradient mesh */}
+        <div className="gradient-mesh" aria-hidden="true" />
+
+        {/* Noise overlay */}
+        <div className="noise-overlay" aria-hidden="true" />
+
+        {/* Main content above overlays */}
+        <div className="relative z-10">
+          {children}
+        </div>
       </body>
     </html>
   );
