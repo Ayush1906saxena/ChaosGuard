@@ -11,26 +11,28 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m'
 
 banner() {
   echo ""
-  echo -e "${CYAN}╔══════════════════════════════════════════════╗${NC}"
-  echo -e "${CYAN}║         ⚔️  ChaosGuard AI  ⚔️               ║${NC}"
-  echo -e "${CYAN}║    AI-Powered Security Analysis Platform    ║${NC}"
-  echo -e "${CYAN}╚══════════════════════════════════════════════╝${NC}"
+  echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${CYAN}║              ⚔️  ChaosGuard AI  ⚔️                          ║${NC}"
+  echo -e "${CYAN}║     AI-Powered Security & Chaos Engineering Platform       ║${NC}"
+  echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
   echo ""
 }
 
-log()  { echo -e "${GREEN}[✓]${NC} $1"; }
-warn() { echo -e "${YELLOW}[!]${NC} $1"; }
-err()  { echo -e "${RED}[✗]${NC} $1"; }
+log()  { echo -e "  ${GREEN}[✓]${NC} $1"; }
+warn() { echo -e "  ${YELLOW}[!]${NC} $1"; }
+err()  { echo -e "  ${RED}[✗]${NC} $1"; }
+step() { echo -e "\n${BOLD}${CYAN}$1${NC}"; }
 
 # ── Pre-flight checks ───────────────────────────────────────────────────────
 
 banner
 
-echo -e "${CYAN}Running pre-flight checks...${NC}"
+step "1/6  Pre-flight checks"
 
 # Check Docker
 if ! command -v docker &>/dev/null; then
@@ -41,7 +43,7 @@ fi
 if ! docker info &>/dev/null; then
   warn "Docker daemon is not running. Attempting to start Docker Desktop..."
   open -a Docker 2>/dev/null || true
-  echo -n "Waiting for Docker"
+  echo -n "  Waiting for Docker"
   for i in $(seq 1 30); do
     if docker info &>/dev/null; then
       echo ""
@@ -77,7 +79,9 @@ if [[ "${1:-}" == "--clean" ]]; then
   log "Clean complete."
 fi
 
-# ── Ensure Ollama is running with optimized settings ─────────────────────
+# ── Ollama setup ─────────────────────────────────────────────────────────────
+
+step "2/6  Ollama & LLM models"
 
 if ! command -v ollama &>/dev/null; then
   err "Ollama is not installed. Install from https://ollama.com"
@@ -86,115 +90,171 @@ fi
 
 if ! curl -sf http://localhost:11434/api/tags &>/dev/null; then
   log "Starting Ollama with memory-optimized settings..."
-  OLLAMA_MAX_LOADED_MODELS=2 OLLAMA_NUM_PARALLEL=1 OLLAMA_FLASH_ATTENTION=1 \
+  OLLAMA_MAX_LOADED_MODELS=3 OLLAMA_NUM_PARALLEL=1 OLLAMA_FLASH_ATTENTION=1 \
     ollama serve &>/dev/null &
-  sleep 3
+  OLLAMA_PID=$!
+  echo -n "  Waiting for Ollama"
+  for i in $(seq 1 20); do
+    if curl -sf http://localhost:11434/api/tags &>/dev/null; then
+      echo ""
+      log "Ollama started (PID $OLLAMA_PID)."
+      break
+    fi
+    echo -n "."
+    sleep 2
+  done
   if ! curl -sf http://localhost:11434/api/tags &>/dev/null; then
-    warn "Ollama may still be starting, continuing..."
-  else
-    log "Ollama started."
+    err "Ollama failed to start. Please run manually:"
+    err "  OLLAMA_MAX_LOADED_MODELS=3 OLLAMA_NUM_PARALLEL=1 OLLAMA_FLASH_ATTENTION=1 ollama serve"
+    exit 1
   fi
 else
   log "Ollama is already running."
-  warn "For best performance, restart Ollama with:"
-  warn "  OLLAMA_MAX_LOADED_MODELS=2 OLLAMA_NUM_PARALLEL=1 OLLAMA_FLASH_ATTENTION=1 ollama serve"
 fi
 
 # Pull required models if missing
-for model in qwen2.5-coder:7b llama3.1:8b nomic-embed-text; do
-  if ! ollama list | grep -q "$(echo $model | cut -d: -f1)"; then
-    log "Pulling model $model..."
+MODELS=("qwen2.5-coder:7b" "llama3.1:8b" "nomic-embed-text")
+for model in "${MODELS[@]}"; do
+  model_base=$(echo "$model" | cut -d: -f1)
+  if ! ollama list 2>/dev/null | grep -q "$model_base"; then
+    log "Pulling model $model (this may take a few minutes)..."
     ollama pull "$model"
+    log "Model $model downloaded."
   else
-    log "Model $model already available."
+    log "Model $model ready."
   fi
 done
 
-# ── Check .env ───────────────────────────────────────────────────────────────
+# ── Environment file ─────────────────────────────────────────────────────────
+
+step "3/6  Environment configuration"
 
 if [ ! -f .env ]; then
-  err ".env file not found. Creating from defaults..."
+  log "Creating .env with default settings..."
   cat > .env <<'ENVEOF'
+# === Core Infrastructure ===
 POSTGRES_HOST=postgres
 POSTGRES_PORT=5432
 POSTGRES_DB=chaosguard
 POSTGRES_USER=chaosguard
 POSTGRES_PASSWORD=chaosguard_dev_2026
+
 REDIS_HOST=redis
 REDIS_PORT=6379
+
 KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
 CHROMADB_HOST=chromadb
 CHROMADB_PORT=8000
-OLLAMA_BASE_URL=http://ollama:11434
+
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+
+# === Ollama Models ===
 OLLAMA_CODE_MODEL=qwen2.5-coder:7b
 OLLAMA_REASONING_MODEL=llama3.1:8b
 OLLAMA_EMBED_MODEL=nomic-embed-text
+
+# === Java Gateway ===
+GATEWAY_PORT=8080
+DATABASE_URL=jdbc:postgresql://postgres:5432/chaosguard
+DATABASE_USER=chaosguard
+DATABASE_PASSWORD=chaosguard_dev_2026
+
+# === Python Services ===
+INDEXER_PORT=8081
+AGENTS_PORT=8082
+MCP_PORT=5001
+
+# === Frontend ===
+FRONTEND_PORT=3000
+NEXT_PUBLIC_API_URL=http://localhost:8080
+
+# === Scan Limits ===
+MAX_REPO_SIZE_MB=500
+MAX_FILE_COUNT=50000
 MAX_CONCURRENT_SCANS=3
+SCAN_TIMEOUT_MINUTES=60
+
+# === GitHub (optional — needed for Create Issue / Create PR) ===
+# GITHUB_TOKEN=ghp_your_token_here
+
+# === Kafka Topics ===
+KAFKA_TOPIC_CLONE=repo-clone-events
+KAFKA_TOPIC_INDEX=index-events
+KAFKA_TOPIC_INDEX_COMPLETE=index-complete
+KAFKA_TOPIC_SCAN_PROGRESS=scan-progress
+KAFKA_TOPIC_SCAN_COMPLETE=scan-complete
+KAFKA_TOPIC_RESULTS_READY=results-ready
 ENVEOF
-  log ".env created."
+  log ".env created with defaults."
+else
+  log ".env already exists."
 fi
 
 # ── Build and start ─────────────────────────────────────────────────────────
 
-echo ""
-echo -e "${CYAN}Building and starting all services...${NC}"
-echo -e "${YELLOW}First run will pull images & LLM models (~15GB). This may take 10-20 minutes.${NC}"
+step "4/6  Building and starting services"
+echo -e "  ${YELLOW}First run pulls Docker images (~5GB) and builds 5 services. May take 10-15 minutes.${NC}"
 echo ""
 
-docker compose up --build -d 2>&1 | grep -v "^$"
+docker compose up --build -d 2>&1 | grep -E "Built|Started|Created|Running|Pulling|Error" || true
 
 # ── Wait for services ───────────────────────────────────────────────────────
 
-echo ""
-echo -e "${CYAN}Waiting for services to become healthy...${NC}"
+step "5/6  Waiting for services to become healthy"
 
 wait_for_service() {
   local name=$1
   local url=$2
   local max_wait=${3:-120}
-  echo -n "  Waiting for $name"
-  for i in $(seq 1 $max_wait); do
+  local interval=${4:-3}
+  echo -n "  $name"
+  for i in $(seq 1 $((max_wait / interval))); do
     if curl -sf "$url" &>/dev/null; then
       echo -e " ${GREEN}✓${NC}"
       return 0
     fi
     echo -n "."
-    sleep 2
+    sleep "$interval"
   done
-  echo -e " ${RED}✗ (timeout after ${max_wait}s)${NC}"
+  echo -e " ${RED}✗ (timeout)${NC}"
   return 1
 }
 
-wait_for_service "PostgreSQL" "http://localhost:5432" 30 2>/dev/null || true
-wait_for_service "Redis" "http://localhost:6379" 30 2>/dev/null || true
-wait_for_service "Kafka" "http://localhost:9092" 60 2>/dev/null || true
-wait_for_service "ChromaDB" "http://localhost:8000/api/v1/heartbeat" 60
-wait_for_service "Ollama" "http://localhost:11434/api/tags" 60
-wait_for_service "Gateway" "http://localhost:8080/actuator/health" 180
-wait_for_service "Indexer" "http://localhost:8081/health" 120
-wait_for_service "Agents" "http://localhost:8082/health" 120
-wait_for_service "Frontend" "http://localhost:3000" 120
+wait_for_service "ChromaDB     " "http://localhost:8000/api/v1/heartbeat" 60
+wait_for_service "Gateway      " "http://localhost:8080/actuator/health" 180
+wait_for_service "Indexer      " "http://localhost:8081/health" 120
+wait_for_service "Agents       " "http://localhost:8082/health" 120
+wait_for_service "Frontend     " "http://localhost:3000" 120
+wait_for_service "Prometheus   " "http://localhost:9090/-/healthy" 30
+wait_for_service "Grafana      " "http://localhost:3002/api/health" 60
+wait_for_service "Swagger UI   " "http://localhost:8080/swagger-ui.html" 30
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 
+step "6/6  All systems go!"
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║                ChaosGuard AI is running!                    ║${NC}"
+echo -e "${GREEN}║              ChaosGuard AI is running!                      ║${NC}"
 echo -e "${GREEN}╠══════════════════════════════════════════════════════════════╣${NC}"
 echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}  Frontend:    ${CYAN}http://localhost:3000${NC}                          ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}  Gateway API: ${CYAN}http://localhost:8080${NC}                          ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}  MCP Server:  ${CYAN}http://localhost:5001${NC}                          ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  ${BOLD}Application${NC}                                                 ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  Dashboard:     ${CYAN}http://localhost:3000${NC}                        ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  Gateway API:   ${CYAN}http://localhost:8080${NC}                        ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  Swagger UI:    ${CYAN}http://localhost:8080/swagger-ui.html${NC}        ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  MCP Server:    ${CYAN}http://localhost:5001${NC}                        ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  ${BOLD}Observability${NC}                                               ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  Grafana:       ${CYAN}http://localhost:3002${NC}  (admin/admin)         ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  Prometheus:    ${CYAN}http://localhost:9090${NC}                        ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  ${BOLD}Default login:${NC}  admin / admin                                ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
 echo -e "${GREEN}╠══════════════════════════════════════════════════════════════╣${NC}"
-echo -e "${GREEN}║${NC}  Quick scan (curl):                                          ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}  ${YELLOW}curl -X POST http://localhost:8080/api/v1/scans \\${NC}           ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}  ${YELLOW}  -H 'Content-Type: application/json' \\${NC}                   ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}  ${YELLOW}  -d '{\"repoUrl\":\"https://github.com/OWASP/NodeGoat\",${NC}   ${GREEN}║${NC}"
-echo -e "${GREEN}║${NC}  ${YELLOW}       \"tier\":\"RECON\"}'${NC}                                     ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  Logs:  ${CYAN}docker compose logs -f [service]${NC}                     ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  Stop:  ${CYAN}docker compose down${NC}                                  ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  Clean: ${CYAN}./start.sh --clean${NC}                                   ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}                                                              ${GREEN}║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""

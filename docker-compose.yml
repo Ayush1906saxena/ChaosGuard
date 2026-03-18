@@ -334,6 +334,7 @@ services:
       - "--web.console.templates=/etc/prometheus/consoles"
     networks:
       - internal
+      - external
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
       interval: 10s
@@ -379,6 +380,7 @@ services:
       - "-config.file=/etc/tempo/tempo.yml"
     networks:
       - internal
+      - external
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3200/ready"]
       interval: 10s
