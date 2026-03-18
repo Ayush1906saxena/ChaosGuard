@@ -1,27 +1,13 @@
 package com.chaosguard.config;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
-
-import java.util.List;
-
-@Configuration
+/**
+ * CORS is now configured via {@link SecurityConfig#corsConfigurationSource()}.
+ * This class is intentionally left empty to avoid bean conflicts with
+ * Spring Security's CORS integration.
+ *
+ * Allowed origins are controlled by the environment variable CORS_ALLOWED_ORIGINS
+ * (defaults to http://localhost:3000).
+ */
 public class CorsConfig {
-
-    @Bean
-    public CorsFilter corsFilter() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
-        config.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return new CorsFilter(source);
-    }
+    // Intentionally empty — CORS handled by SecurityConfig
 }

@@ -445,10 +445,22 @@ class Orchestrator:
 
         return findings
 
+    @staticmethod
+    def _normalize_finding(f: dict) -> dict:
+        """Ensure all finding fields are strings, not lists (LLM output can vary)."""
+        for key in ("evidence", "affected_code", "file_path", "category", "title", "severity", "description"):
+            val = f.get(key)
+            if isinstance(val, list):
+                f[key] = " ".join(str(item) for item in val)
+        return f
+
     def _dedup_rank(self, findings: list[dict]) -> list[dict]:
         """Deduplicate by similarity, apply FP suppression, and rank by severity."""
         if not findings:
             return []
+
+        # Normalize fields that LLMs sometimes return as lists
+        findings = [self._normalize_finding(f) for f in findings]
 
         # Load FP suppression fingerprints (Task 3e)
         suppression_fps = set()
@@ -482,9 +494,14 @@ class Orchestrator:
             # Auto-downgrade confidence for known FP patterns (Task 3e)
             if suppression_fps:
                 code_content = f.get("evidence", "") or f.get("affected_code", "")
+                if isinstance(code_content, list):
+                    code_content = " ".join(str(item) for item in code_content)
+                code_content = str(code_content) if code_content else ""
                 if code_content:
+                    fp_category = str(f.get("category", ""))
+                    fp_file = str(f.get("file_path", ""))
                     fp_hash = hashlib.sha256(
-                        (code_content + "|" + f.get("category", "") + "|" + f.get("file_path", "")).encode()
+                        (code_content + "|" + fp_category + "|" + fp_file).encode()
                     ).hexdigest()
                     if fp_hash in suppression_fps:
                         f["confidence"] = f.get("confidence", 50) * 0.3

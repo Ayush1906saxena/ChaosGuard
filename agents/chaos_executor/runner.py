@@ -14,7 +14,9 @@ from datetime import datetime
 import psycopg2
 
 from config import config
+from chaos_executor.hypothesis import HypothesisValidator, HypothesisResult, default_hypotheses
 from chaos_executor.injectors import INJECTOR_REGISTRY, InjectionResult
+from chaos_executor.observability import MetricsCollector
 from chaos_executor.probes import HealthProber, ProbeResult, ProbeTarget
 from chaos_executor.safety import SafetyController, SafetyLimits
 from chaos_executor.sandbox import SandboxOrchestrator, SandboxState
@@ -39,6 +41,7 @@ class ExperimentResult:
     health_timeline: list[dict] = field(default_factory=list)
     verdict: str = ""
     recommendations: list[str] = field(default_factory=list)
+    hypothesis_summary: dict = field(default_factory=dict)
     started_at: str = ""
     completed_at: str = ""
     error: str = ""
@@ -54,6 +57,8 @@ class ExperimentRunner:
         self.safety = SafetyController()
         self._active_injections: list[InjectionResult] = []
         self._sandbox_state: SandboxState | None = None
+        self._hypothesis_validator: HypothesisValidator | None = None
+        self._metrics_collector: MetricsCollector | None = None
 
     async def run_experiment(
         self,
@@ -140,6 +145,11 @@ class ExperimentRunner:
             result.baseline_metrics = self._compute_metrics(baseline_probes)
             result.health_timeline.extend([asdict(p) for p in baseline_probes])
 
+            # Initialize hypothesis validator and record baseline
+            self._hypothesis_validator = HypothesisValidator(default_hypotheses())
+            baseline_hyp_metrics = self._to_hypothesis_metrics(result.baseline_metrics)
+            self._hypothesis_validator.record_baseline(baseline_hyp_metrics)
+
             # === Phase 4: Approval ===
             result.phase = "PENDING_APPROVAL"
             self._persist_experiment(result, plan_dict=plan_dict)
@@ -159,6 +169,14 @@ class ExperimentRunner:
             steady_ok = any(p.success for p in steady_probes)
             if not steady_ok:
                 logger.warning("[chaos] Steady-state check failed, proceeding anyway")
+
+            # Validate hypotheses at steady-state (pre-chaos)
+            if self._hypothesis_validator:
+                steady_metrics = self._compute_metrics(steady_probes)
+                steady_hyp_metrics = self._to_hypothesis_metrics(steady_metrics)
+                self._hypothesis_validator.validate(
+                    steady_hyp_metrics, phase="STEADY_STATE", is_during_chaos=False
+                )
 
             # === Phase 6: Injection ===
             result.phase = "INJECTING"
@@ -212,6 +230,22 @@ class ExperimentRunner:
             result.chaos_metrics = self._compute_metrics(chaos_probes)
             result.health_timeline.extend([asdict(p) for p in chaos_probes])
 
+            # Validate hypotheses during chaos — trigger early abort on failure
+            if self._hypothesis_validator:
+                chaos_hyp_metrics = self._to_hypothesis_metrics(result.chaos_metrics)
+                chaos_evals = self._hypothesis_validator.validate(
+                    chaos_hyp_metrics, phase="OBSERVING", is_during_chaos=True
+                )
+                failed_during_chaos = [
+                    e for e in chaos_evals if e.result == HypothesisResult.FAILED
+                ]
+                if failed_during_chaos:
+                    logger.warning(
+                        "[chaos] %d hypothesis(es) FAILED during chaos — triggering early abort",
+                        len(failed_during_chaos),
+                    )
+                    result.status = "ABORTED"
+
             if self.safety.is_aborted(scan_id):
                 result.status = "ABORTED"
 
@@ -242,10 +276,21 @@ class ExperimentRunner:
             else:
                 result.recovery_time_s = 30.0  # didn't recover
 
+            # Validate hypotheses post-recovery (should return to steady-state)
+            if self._hypothesis_validator:
+                recovery_hyp_metrics = self._to_hypothesis_metrics(result.recovery_metrics)
+                self._hypothesis_validator.validate(
+                    recovery_hyp_metrics, phase="RECOVERING", is_during_chaos=False
+                )
+
             # === Phase 10: Score ===
             result.resilience_score = self._compute_resilience_score(result)
             result.verdict = self._generate_verdict(result)
             result.recommendations = self._generate_recommendations(result)
+
+            # Include hypothesis summary in experiment result
+            if self._hypothesis_validator:
+                result.hypothesis_summary = self._hypothesis_validator.summary()
 
             if result.status not in ("ABORTED", "REJECTED"):
                 result.status = "COMPLETED"
@@ -276,6 +321,8 @@ class ExperimentRunner:
 
             self._sandbox_state = None
             self._active_injections = []
+            self._hypothesis_validator = None
+            self._metrics_collector = None
 
         return result
 
@@ -310,6 +357,21 @@ class ExperimentRunner:
                     except Exception as exc:
                         logger.error("[rollback] Failed for %s: %s", injection.injection_id, exc)
         self._active_injections = []
+
+    @staticmethod
+    def _to_hypothesis_metrics(computed_metrics: dict) -> dict[str, float]:
+        """Convert computed probe metrics into the format expected by HypothesisValidator.
+
+        Maps runner metric keys to hypothesis metric names:
+          - p99_response_ms  -> response_time_p99
+          - success_rate     -> availability (and inverse for error_rate)
+        """
+        success_rate = computed_metrics.get("success_rate", 0)
+        return {
+            "response_time_p99": computed_metrics.get("p99_response_ms", 0),
+            "error_rate": max(0, 100.0 - success_rate),
+            "availability": success_rate,
+        }
 
     def _compute_metrics(self, probes: list[ProbeResult]) -> dict:
         """Compute aggregate metrics from probe results."""

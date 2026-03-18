@@ -1,0 +1,32 @@
+name: Security Scan
+
+on:
+  pull_request:
+    branches: [master, main]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 6am
+
+jobs:
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python dependency audit
+        run: |
+          pip install pip-audit
+          cd agents && pip-audit -r requirements.txt
+        continue-on-error: true
+      - name: npm audit
+        run: cd frontend && npm audit --production
+        continue-on-error: true
+
+  trivy-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'

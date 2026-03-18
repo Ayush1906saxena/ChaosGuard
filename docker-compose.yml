@@ -3,6 +3,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: chaosguard
       POSTGRES_USER: chaosguard
@@ -22,6 +23,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
       - "6379:6379"
     command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
@@ -35,6 +37,7 @@ services:
 
   kafka:
     image: apache/kafka:3.7.0
+    restart: unless-stopped
     ports:
       - "9092:9092"
     environment:
@@ -62,7 +65,8 @@ services:
       retries: 10
 
   chromadb:
-    image: chromadb/chroma:latest
+    image: chromadb/chroma:0.5.23
+    restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
@@ -78,6 +82,29 @@ services:
       retries: 5
       start_period: 10s
 
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      EXEC: 1
+      NETWORKS: 1
+      POST: 1
+      IMAGES: 0
+      VOLUMES: 0
+      BUILD: 0
+      COMMIT: 0
+      CONFIGS: 0
+      SECRETS: 0
+      SERVICES: 0
+      SWARM: 0
+      PLUGINS: 0
+      NODES: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - internal
+
   # Ollama runs natively on host for Metal GPU acceleration.
   # Start it with: ollama serve
   # Models needed: nomic-embed-text, llama3.1:8b, deepseek-coder-v2:16b
@@ -89,6 +116,7 @@ services:
     build:
       context: ./gateway
       dockerfile: Dockerfile
+    restart: on-failure
     ports:
       - "8080:8080"
     env_file: .env
@@ -114,6 +142,7 @@ services:
     build:
       context: ./indexer
       dockerfile: Dockerfile
+    restart: on-failure
     ports:
       - "8081:8081"
     env_file: .env
@@ -137,12 +166,14 @@ services:
     build:
       context: ./agents
       dockerfile: Dockerfile
+    restart: on-failure
     ports:
       - "8082:8082"
     env_file: .env
     volumes:
       - clone_data:/tmp/chaosguard/repos
-      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DOCKER_HOST: tcp://docker-proxy:2375
     depends_on:
       kafka:
         condition: service_healthy
@@ -150,6 +181,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      docker-proxy:
+        condition: service_started
     networks:
       - internal
       - external
@@ -163,6 +196,7 @@ services:
     build:
       context: ./agents
       dockerfile: Dockerfile
+    restart: on-failure
     env_file: .env
     volumes:
       - clone_data:/tmp/chaosguard/repos
@@ -191,6 +225,7 @@ services:
     build:
       context: ./agents
       dockerfile: Dockerfile
+    restart: on-failure
     env_file: .env
     volumes:
       - clone_data:/tmp/chaosguard/repos
@@ -219,6 +254,7 @@ services:
     build:
       context: ./agents
       dockerfile: Dockerfile
+    restart: on-failure
     env_file: .env
     volumes:
       - clone_data:/tmp/chaosguard/repos
@@ -247,6 +283,7 @@ services:
     build:
       context: ./mcp-server
       dockerfile: Dockerfile
+    restart: on-failure
     ports:
       - "5001:5001"
     env_file: .env
@@ -266,6 +303,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    restart: on-failure
     ports:
       - "3000:3000"
     environment:

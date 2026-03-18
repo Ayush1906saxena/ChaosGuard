@@ -76,6 +76,13 @@ management:
       show-details: always
 
 chaosguard:
+  jwt:
+    secret: ${JWT_SECRET:chaosguard-dev-secret-key-change-in-production-min-256-bits!!}
+    expiration: ${JWT_EXPIRATION:86400000}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://frontend:3000}
+  rate-limit:
+    requests-per-minute: ${RATE_LIMIT_RPM:100}
   scan:
     max-concurrent-scans: ${MAX_CONCURRENT_SCANS:10}
     max-repo-size-mb: ${MAX_REPO_SIZE_MB:500}

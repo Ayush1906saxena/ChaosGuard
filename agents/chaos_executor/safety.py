@@ -3,8 +3,9 @@ timeouts, approval workflows, and emergency stop via Redis."""
 
 import asyncio
 import logging
+import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import redis
 
@@ -15,10 +16,18 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SafetyLimits:
-    max_blast_radius: int = 3            # max containers affected at once
-    max_experiment_duration_s: int = 300  # 5-minute hard cap
-    max_concurrent_experiments: int = 1
-    approval_timeout_s: int = 600        # 10 minutes to approve
+    max_blast_radius: int = field(
+        default_factory=lambda: int(os.environ.get("CHAOS_MAX_BLAST_RADIUS", "3"))
+    )
+    max_experiment_duration_s: int = field(
+        default_factory=lambda: int(os.environ.get("CHAOS_MAX_DURATION_S", "300"))
+    )
+    max_concurrent_experiments: int = field(
+        default_factory=lambda: int(os.environ.get("CHAOS_MAX_CONCURRENT", "1"))
+    )
+    approval_timeout_s: int = field(
+        default_factory=lambda: int(os.environ.get("CHAOS_APPROVAL_TIMEOUT_S", "600"))
+    )
     auto_rollback_on_error: bool = True
     require_approval: bool = True
 
