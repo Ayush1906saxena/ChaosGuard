@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import SeverityBadge from './SeverityBadge';
 import TierBadge from './TierBadge';
-import type { Finding, Severity, ScanTier, FindingCategory } from '@/lib/types';
+import type { Finding, Severity, ScanTier } from '@/lib/types';
 import {
   ChevronUpIcon,
   ChevronDownIcon,
@@ -43,7 +43,7 @@ export default function FindingsTable({
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [filterOpen, setFilterOpen] = useState(false);
   const [severityFilter, setSeverityFilter] = useState<Severity[]>([]);
-  const [categoryFilter, setCategoryFilter] = useState<FindingCategory[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [tierFilter, setTierFilter] = useState<ScanTier[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [feedbackState, setFeedbackState] = useState<Record<string, FeedbackLabel | null>>({});

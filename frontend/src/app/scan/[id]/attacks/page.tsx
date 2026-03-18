@@ -203,6 +203,21 @@ export default function AttacksPage() {
                       </div>
                     </div>
 
+                    {/* Mitigations */}
+                    {chain.mitigations && chain.mitigations.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
+                          <div className="w-1 h-4 rounded-full bg-gradient-to-b from-green-500 to-emerald-500" />
+                          Mitigations
+                        </h4>
+                        <ol className="space-y-2 list-decimal list-inside">
+                          {chain.mitigations.map((mitigation, idx) => (
+                            <li key={idx} className="text-sm text-zinc-400">{mitigation}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+
                     {/* MITRE References */}
                     {chain.mitreAttackTechniques.length > 0 && (
                       <div>

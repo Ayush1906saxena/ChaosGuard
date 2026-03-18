@@ -139,6 +139,8 @@ class BusinessLogicAnalyzer:
             if isinstance(result, dict):
                 parsed = result.get("parsed", {})
                 for f in parsed.get("findings", []):
+                    if not isinstance(f, dict):
+                        continue
                     f["agent"] = self.agent_name
                     f["discovered_tier"] = "SIEGE"
                     f["analysis_category"] = category["name"]

@@ -79,9 +79,10 @@ class PlaybookGenerator:
         # Determine scope and methodology
         categories_in_scope = list({tc.get("category", "unknown") for tc in test_cases})
         tools_aggregate = list({
-            tool
+            str(tool) if not isinstance(tool, str) else tool
             for tc in test_cases
             for tool in tc.get("tools_required", [])
+            if not isinstance(tool, (list, dict, set))
         })
 
         playbook = {

@@ -79,7 +79,7 @@ export interface Finding {
   title: string;
   description: string;
   severity: Severity;
-  category: FindingCategory;
+  category: string;
   confidence: number;
   filePath: string;
   startLine: number;
@@ -105,6 +105,8 @@ export interface AttackChain {
   mitreAttackTechniques: MitreReference[];
   impactDescription: string;
   likelihood: 'HIGH' | 'MEDIUM' | 'LOW';
+  mitigations: string[];
+  exploitComplexity: string;
   createdAt: string;
 }
 
@@ -133,15 +135,14 @@ export interface ChaosScenario {
   scanId: string;
   title: string;
   description: string;
-  tier: ScanTier;
-  scenarioType: 'SINGLE_FAILURE' | 'CASCADE' | 'BLAST_RADIUS';
-  trigger: string;
-  affectedComponents: string[];
-  blastRadius: BlastRadiusNode[];
-  missingSafeguards: string[];
-  estimatedRecoveryTime: string;
+  scenarioType: string;
+  targetComponent: string;
+  injectionPoints: Record<string, unknown>[];
+  expectedImpact: Record<string, unknown>;
+  blastRadius: Record<string, unknown>;
   severity: Severity;
-  timeline: ChaosTimelineEvent[];
+  prerequisites: string[];
+  recoverySteps: string[];
   createdAt: string;
 }
 
@@ -169,12 +170,17 @@ export interface Fix {
   description: string;
   originalCode: string;
   fixedCode: string;
+  diffPatch: string;
   filePath: string;
   startLine: number;
   endLine: number;
   confidence: number;
   breakingChange: boolean;
   testRequired: boolean;
+  syntaxValid: boolean | null;
+  compileValid: boolean | null;
+  testsPass: boolean | null;
+  isApplied: boolean;
   pocSteps: string[];
   createdAt: string;
 }

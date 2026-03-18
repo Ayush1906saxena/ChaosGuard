@@ -446,13 +446,6 @@ export default function ChaosPage() {
           </h2>
           {scenarios.map((scenario) => {
             const isExpanded = expandedId === scenario.id;
-            const blastPercentage = scenario.blastRadius.length > 0
-              ? Math.min(100, Math.round(
-                  (scenario.blastRadius.filter(
-                    (n) => n.impact === 'CRITICAL' || n.impact === 'HIGH'
-                  ).length / scenario.blastRadius.length) * 100
-                ))
-              : 0;
 
             return (
               <div
@@ -474,12 +467,16 @@ export default function ChaosPage() {
                     <h3 className="text-lg font-semibold text-zinc-100 mb-1">{scenario.title}</h3>
                     <p className="text-sm text-zinc-400 line-clamp-2">{scenario.description}</p>
                     <div className="flex items-center gap-4 mt-3">
-                      <span className="text-xs text-zinc-500">
-                        {scenario.affectedComponents.length} affected services
-                      </span>
-                      <span className="text-xs text-zinc-500">
-                        Recovery: {scenario.estimatedRecoveryTime}
-                      </span>
+                      {scenario.targetComponent && (
+                        <span className="text-xs text-zinc-500">
+                          Target: {scenario.targetComponent}
+                        </span>
+                      )}
+                      {scenario.injectionPoints.length > 0 && (
+                        <span className="text-xs text-zinc-500">
+                          {scenario.injectionPoints.length} injection point{scenario.injectionPoints.length > 1 ? 's' : ''}
+                        </span>
+                      )}
                     </div>
                   </button>
 
@@ -523,118 +520,88 @@ export default function ChaosPage() {
                 {/* Expanded details */}
                 {isExpanded && (
                   <div className="border-t border-white/[0.04] p-6 space-y-6 animate-slide-up">
-                    {scenario.trigger && (
+                    {scenario.targetComponent && (
                       <div className="bg-amber-500/[0.03] border border-amber-500/10 rounded-xl p-4">
                         <h4 className="text-sm font-semibold text-amber-400 mb-1 flex items-center gap-2">
                           <div className="w-1 h-4 rounded-full bg-gradient-to-b from-amber-500 to-yellow-500" />
-                          Trigger
+                          Target Component
                         </h4>
-                        <p className="text-sm text-zinc-300">{scenario.trigger}</p>
+                        <p className="text-sm text-zinc-300">{scenario.targetComponent}</p>
                       </div>
                     )}
 
-                    {scenario.blastRadius && scenario.blastRadius.length > 0 && (
+                    {scenario.injectionPoints && scenario.injectionPoints.length > 0 && (
                       <div>
                         <h4 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
                           <div className="w-1 h-4 rounded-full bg-gradient-to-b from-red-500 to-orange-500" />
-                          Blast Radius
+                          Injection Points
                         </h4>
-                        <div className="mb-4">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs text-zinc-500">Impact spread</span>
-                            <span className="text-xs font-mono text-zinc-400">{blastPercentage}% critical/high</span>
-                          </div>
-                          <div className="h-3 bg-white/[0.03] border border-white/[0.04] rounded-full overflow-hidden">
-                            <div
-                              className={cn(
-                                'h-full rounded-full transition-all duration-700',
-                                blastPercentage >= 70 ? 'bg-red-500' :
-                                blastPercentage >= 40 ? 'bg-orange-500' :
-                                'bg-yellow-500'
-                              )}
-                              style={{ width: `${blastPercentage}%` }}
-                            />
-                          </div>
-                        </div>
                         <div className="grid gap-2">
-                          {scenario.blastRadius.map((node, idx) => (
+                          {scenario.injectionPoints.map((point, idx) => (
                             <div
                               key={idx}
-                              className="flex items-center justify-between bg-white/[0.02] border border-white/[0.04] rounded-lg px-4 py-2"
+                              className="flex items-center bg-white/[0.02] border border-white/[0.04] rounded-lg px-4 py-2"
                             >
                               <div className="flex items-center gap-3">
-                                <div className={cn('w-2.5 h-2.5 rounded-full', impactColors[node.impact])} />
-                                <div>
-                                  <span className="text-sm text-zinc-200">{node.component}</span>
-                                  <p className="text-[10px] text-zinc-500">{node.failureMode}</p>
-                                </div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                                <span className="text-sm text-zinc-200">
+                                  {Object.entries(point).map(([k, v]) => `${k}: ${v}`).join(' | ')}
+                                </span>
                               </div>
-                              <SeverityBadge severity={node.impact} size="sm" />
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    {scenario.affectedComponents && scenario.affectedComponents.length > 0 && (
+                    {scenario.expectedImpact && Object.keys(scenario.expectedImpact).length > 0 && (
                       <div>
                         <h4 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
                           <div className="w-1 h-4 rounded-full bg-gradient-to-b from-blue-500 to-purple-500" />
-                          Affected Services
+                          Expected Impact
                         </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {scenario.affectedComponents.map((component) => (
-                            <span
-                              key={component}
-                              className="px-3 py-1 text-xs bg-white/[0.03] border border-white/[0.06] rounded-lg text-zinc-300"
-                            >
-                              {component}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {scenario.missingSafeguards && scenario.missingSafeguards.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
-                          <div className="w-1 h-4 rounded-full bg-gradient-to-b from-red-500 to-pink-500" />
-                          Missing Safeguards
-                        </h4>
-                        <div className="space-y-2">
-                          {scenario.missingSafeguards.map((safeguard, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-start gap-3 p-3 bg-red-500/[0.03] border border-red-500/10 rounded-lg"
-                            >
-                              <XCircleIcon className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-                              <span className="text-sm text-zinc-300">{safeguard}</span>
+                        <div className="bg-white/[0.02] border border-white/[0.04] rounded-lg p-4">
+                          {Object.entries(scenario.expectedImpact).map(([key, value]) => (
+                            <div key={key} className="flex justify-between text-sm py-1">
+                              <span className="text-zinc-400">{key.replace(/_/g, ' ')}</span>
+                              <span className="text-zinc-200">{String(value)}</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    {scenario.timeline && scenario.timeline.length > 0 && (
+                    {scenario.prerequisites && scenario.prerequisites.length > 0 && (
                       <div>
                         <h4 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
                           <div className="w-1 h-4 rounded-full bg-gradient-to-b from-yellow-500 to-orange-500" />
-                          Failure Timeline
+                          Prerequisites
                         </h4>
                         <div className="space-y-2">
-                          {scenario.timeline.map((event, idx) => (
-                            <div key={idx} className="flex items-start gap-3 text-sm">
-                              <span className="text-[10px] text-zinc-600 font-mono w-16 flex-shrink-0 pt-0.5">
-                                {event.timestamp}
-                              </span>
-                              <div className={cn('w-2 h-2 rounded-full mt-1.5 flex-shrink-0', impactColors[event.impact])} />
-                              <div>
-                                <span className="text-zinc-300">{event.event}</span>
-                                <span className="text-zinc-600 ml-2 text-xs">{event.component}</span>
-                              </div>
+                          {scenario.prerequisites.map((prereq, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-start gap-3 p-3 bg-white/[0.02] border border-white/[0.04] rounded-lg"
+                            >
+                              <InformationCircleIcon className="w-4 h-4 text-zinc-500 mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-zinc-300">{prereq}</span>
                             </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+
+                    {scenario.recoverySteps && scenario.recoverySteps.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-zinc-300 mb-3 flex items-center gap-2">
+                          <div className="w-1 h-4 rounded-full bg-gradient-to-b from-green-500 to-emerald-500" />
+                          Recovery Steps
+                        </h4>
+                        <ol className="space-y-2 list-decimal list-inside">
+                          {scenario.recoverySteps.map((step, idx) => (
+                            <li key={idx} className="text-sm text-zinc-400">{step}</li>
+                          ))}
+                        </ol>
                       </div>
                     )}
                   </div>

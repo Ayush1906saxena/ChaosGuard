@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Type;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +61,7 @@ public class AttackChain {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "scan_id", insertable = false, updatable = false)
     private Scan scan;

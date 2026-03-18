@@ -49,6 +49,8 @@ class LoadAnalyzer(BaseAgent):
         if isinstance(result, dict):
             parsed = result.get("parsed", {})
             for f in parsed.get("findings", []):
+                if not isinstance(f, dict):
+                    continue
                 f["agent"] = self.agent_name
                 f["discovered_tier"] = "HUNTER"
                 findings.append(f)

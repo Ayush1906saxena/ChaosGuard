@@ -145,7 +145,6 @@ public class CloneService {
         }
         return "Clone failed: " + e.getMessage();
     }
-    }
 
     private void cloneRepository(String repoUrl, String branch, File targetDir) throws GitAPIException {
         log.info("Cloning {} branch {} to {}", repoUrl, branch, targetDir.getAbsolutePath());
