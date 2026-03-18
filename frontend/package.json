@@ -11,12 +11,16 @@
   "dependencies": {
     "@heroicons/react": "^2.1.5",
     "@next/swc-darwin-arm64": "^16.1.7",
+    "@tanstack/react-query": "^5.91.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "d3": "^7.9.0",
+    "framer-motion": "^12.38.0",
     "next": "14.2.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "recharts": "^3.8.0",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chaosguard.fullname" . }}-frontend
+  namespace: {{ include "chaosguard.namespace" . }}
+  labels:
+    {{- include "chaosguard.componentLabels" (dict "Root" . "Component" "frontend") | nindent 4 }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+    - port: {{ .Values.frontend.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "chaosguard.selectorLabels" (dict "Root" . "Component" "frontend") | nindent 4 }}

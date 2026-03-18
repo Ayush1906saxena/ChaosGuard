@@ -52,6 +52,17 @@ SKIP_DIRS = {
     "venv", ".venv", "env",
 }
 
+# Files to skip — lock files, minified bundles, generated code
+SKIP_FILES = {
+    "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+    "composer.lock", "Gemfile.lock", "Pipfile.lock",
+    "poetry.lock", "cargo.lock", "go.sum",
+    ".DS_Store", "thumbs.db",
+}
+
+# Skip files matching these patterns (checked via endswith)
+SKIP_FILE_SUFFIXES = (".min.js", ".min.css", ".map", ".bundle.js")
+
 
 # ------------------------------------------------------------------ models
 class IndexRequest(BaseModel):
@@ -103,6 +114,12 @@ def _collect_files(clone_path: str) -> list[str]:
                     logger.warning("Skipping oversized file (>5MB): %s", fpath)
                     continue
             except OSError:
+                continue
+
+            # Skip known non-useful files
+            if fname.lower() in SKIP_FILES:
+                continue
+            if any(fname.lower().endswith(s) for s in SKIP_FILE_SUFFIXES):
                 continue
 
             ext = os.path.splitext(fname)[1].lower()
@@ -191,9 +208,11 @@ async def _run_indexing(request: IndexRequest) -> IndexResponse:
             logger.exception("Embedding failed for scan %s", scan_id)
 
     # 4. Store in ChromaDB
+    chromadb_ok = False
     if total_embedded > 0:
         try:
             vector_store.store_chunks(scan_id, all_chunks)
+            chromadb_ok = True
         except Exception:
             logger.exception("ChromaDB storage failed for scan %s", scan_id)
 
@@ -242,7 +261,21 @@ async def _run_indexing(request: IndexRequest) -> IndexResponse:
         except Exception:
             logger.exception("Deep analysis failed for scan %s", scan_id)
 
-    # 6. Publish index-complete event
+    # 6. Publish index-complete event (only if ChromaDB storage succeeded)
+    if not chromadb_ok and total_embedded > 0:
+        logger.error(
+            "Aborting index-complete publish for scan %s — ChromaDB storage failed, "
+            "agents would query a non-existent collection", scan_id,
+        )
+        return IndexResponse(
+            scan_id=scan_id,
+            status="failed",
+            total_files=len(file_paths),
+            total_chunks=len(all_chunks),
+            total_embedded=0,
+            deep_analysis=None,
+        )
+
     index_complete_event = {
         "scan_id": scan_id,
         "status": "complete",

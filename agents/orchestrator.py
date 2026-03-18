@@ -98,15 +98,24 @@ class Orchestrator:
             documents = all_docs.get("documents", [])
             metadatas = all_docs.get("metadatas", [])
 
+            # Group chunks by file_path and concatenate — avoids running scanners
+            # N times on N chunks of the same file (e.g. package-lock.json → 1700 dupes)
+            file_contents: dict[str, str] = {}
             for i, doc in enumerate(documents):
                 meta = metadatas[i] if i < len(metadatas) else {}
-                file_path = meta.get("file_path", "unknown")
+                fp = meta.get("file_path", "unknown")
+                if fp in file_contents:
+                    file_contents[fp] += "\n" + doc
+                else:
+                    file_contents[fp] = doc
+
+            for file_path, content in file_contents.items():
                 file_name = file_path.rsplit("/", 1)[-1] if "/" in file_path else file_path
 
-                recon_findings.extend(scan_for_secrets(file_path, doc, file_name))
-                recon_findings.extend(scan_dependencies(file_path, doc, file_name))
-                recon_findings.extend(scan_configs(file_path, doc, file_name))
-                recon_findings.extend(scan_code_smells(file_path, doc, file_name))
+                recon_findings.extend(scan_for_secrets(file_path, content, file_name))
+                recon_findings.extend(scan_dependencies(file_path, content, file_name))
+                recon_findings.extend(scan_configs(file_path, content, file_name))
+                recon_findings.extend(scan_code_smells(file_path, content, file_name))
 
         except Exception as exc:
             logger.error("Failed to retrieve documents from ChromaDB: %s", exc)
@@ -116,13 +125,13 @@ class Orchestrator:
                 "error": str(exc),
             })
 
-        # Deduplicate recon findings by ID
-        seen_ids = set()
+        # Deduplicate recon findings by (file_path, title) — not just auto-generated ID
+        seen_keys = set()
         unique_findings = []
         for f in recon_findings:
-            fid = f.get("id", "")
-            if fid and fid not in seen_ids:
-                seen_ids.add(fid)
+            dedup_key = (f.get("file_path", ""), f.get("title", ""), f.get("line", 0))
+            if dedup_key not in seen_keys:
+                seen_keys.add(dedup_key)
                 f["discovered_tier"] = "RECON"
                 unique_findings.append(f)
 

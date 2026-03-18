@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chaosguard.fullname" . }}-config
+  namespace: {{ include "chaosguard.namespace" . }}
+  labels:
+    {{- include "chaosguard.labels" . | nindent 4 }}
+data:
+  KAFKA_BOOTSTRAP_SERVERS: {{ .Values.config.kafka.bootstrapServers | quote }}
+  REDIS_HOST: {{ .Values.config.redis.host | quote }}
+  REDIS_PORT: {{ .Values.config.redis.port | quote }}
+  POSTGRES_HOST: {{ .Values.config.postgres.host | quote }}
+  POSTGRES_PORT: {{ .Values.config.postgres.port | quote }}
+  POSTGRES_DB: {{ .Values.config.postgres.database | quote }}
+  DATABASE_URL: {{ .Values.config.postgres.dsn | quote }}
+  OLLAMA_URL: {{ .Values.config.ollama.url | quote }}
+  OLLAMA_BASE_URL: {{ .Values.config.ollama.url | quote }}
+  CHROMADB_URL: {{ .Values.config.chromadb.url | quote }}
+  CHROMA_HOST: {{ .Values.config.chromadb.url | quote }}

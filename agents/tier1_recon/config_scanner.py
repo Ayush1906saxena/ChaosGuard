@@ -400,8 +400,13 @@ def scan_configs(
 
         return findings
 
-    # JSON config files
-    if name_lower.endswith(".json"):
+    # JSON config files — only scan actual config files, not data/lock/generated files
+    _SKIP_JSON = {
+        "package-lock.json", "package.json", "tsconfig.json",
+        "tsconfig.tsbuildinfo", "composer.lock", ".eslintrc.json",
+        "tslint.json", "launch.json", "settings.json",
+    }
+    if name_lower.endswith(".json") and name_lower not in _SKIP_JSON:
         return scan_app_config(file_path, content)
 
     return []

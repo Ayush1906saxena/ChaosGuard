@@ -1,0 +1,23 @@
+{{- if .Values.agents.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "chaosguard.fullname" . }}-agents
+  namespace: {{ include "chaosguard.namespace" . }}
+  labels:
+    {{- include "chaosguard.componentLabels" (dict "Root" . "Component" "agents") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "chaosguard.fullname" . }}-agents
+  minReplicas: {{ .Values.agents.hpa.minReplicas }}
+  maxReplicas: {{ .Values.agents.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.agents.hpa.targetCPUUtilizationPercentage }}
+{{- end }}

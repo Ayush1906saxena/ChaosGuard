@@ -38,7 +38,7 @@ interface SeverityBadgeProps {
 }
 
 export default function SeverityBadge({ severity, size = 'md', className }: SeverityBadgeProps) {
-  const config = severityConfig[severity];
+  const config = severityConfig[severity] || severityConfig.INFO;
   const sizeClasses = {
     sm: 'px-1.5 py-0.5 text-[10px]',
     md: 'px-2.5 py-0.5 text-[11px]',

@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chaosguard.fullname" . }}-agents
+  namespace: {{ include "chaosguard.namespace" . }}
+  labels:
+    {{- include "chaosguard.componentLabels" (dict "Root" . "Component" "agents") | nindent 4 }}
+spec:
+  replicas: {{ .Values.agents.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chaosguard.selectorLabels" (dict "Root" . "Component" "agents") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "chaosguard.componentLabels" (dict "Root" . "Component" "agents") | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: agents
+          image: "{{ .Values.agents.image.repository }}:{{ .Values.agents.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8082
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "chaosguard.fullname" . }}-config
+            - secretRef:
+                name: {{ include "chaosguard.fullname" . }}-secrets
+          {{- with .Values.agents.env }}
+          env:
+            {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.agents.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.agents.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.agents.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.agents.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.agents.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.agents.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.agents.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.agents.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.agents.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.agents.probes.readiness.failureThreshold }}
+          resources:
+            requests:
+              cpu: {{ .Values.agents.resources.requests.cpu }}
+              memory: {{ .Values.agents.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.agents.resources.limits.cpu }}
+              memory: {{ .Values.agents.resources.limits.memory }}
+          volumeMounts:
+            - name: repo-data
+              mountPath: /tmp/chaosguard/repos
+      volumes:
+        - name: repo-data
+          emptyDir: {}

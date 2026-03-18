@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import Sidebar from '@/components/Sidebar';
 import TierSelector from '@/components/TierSelector';
 import TierBadge from '@/components/TierBadge';
+import { SkeletonTable } from '@/components/Skeleton';
 import { createScan, listScans } from '@/lib/api';
 import { formatDate, extractRepoName } from '@/lib/utils';
 import type { ScanTier, Scan, ScanStatus } from '@/lib/types';
@@ -82,7 +84,11 @@ export default function DashboardPage() {
       <main className="flex-1 lg:ml-64">
         <div className="max-w-5xl mx-auto px-6 py-16">
           {/* Hero Section */}
-          <div className="text-center mb-16 animate-fade-in">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="text-center mb-16">
             <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full glass-card mb-8">
               <div className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
@@ -97,10 +103,15 @@ export default function DashboardPage() {
               Multi-agent AI security platform that autonomously scans repositories,
               discovers attack chains, runs chaos engineering, and generates verified fixes.
             </p>
-          </div>
+          </motion.div>
 
           {/* Scan Form */}
-          <form onSubmit={handleSubmit} className="space-y-8 mb-20">
+          <motion.form
+            onSubmit={handleSubmit}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15, ease: 'easeOut' }}
+            className="space-y-8 mb-20">
             <div className="glass-card rounded-2xl p-8 animate-slide-up">
               <h2 className="text-base font-semibold text-zinc-200 mb-6 flex items-center gap-2">
                 <div className="w-1 h-4 rounded-full bg-gradient-to-b from-red-500 to-orange-500" />
@@ -177,10 +188,13 @@ export default function DashboardPage() {
                 </>
               )}
             </button>
-          </form>
+          </motion.form>
 
           {/* Recent Scans */}
-          <div className="animate-slide-up" style={{ animationDelay: '0.2s', animationFillMode: 'backwards' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3, ease: 'easeOut' }}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-semibold text-zinc-200 flex items-center gap-2">
                 <div className="w-1 h-4 rounded-full bg-gradient-to-b from-blue-500 to-purple-500" />
@@ -202,14 +216,8 @@ export default function DashboardPage() {
                   </button>
                 </div>
               ) : loadingScans ? (
-                <div className="px-6 py-16 text-center">
-                  <div className="inline-flex items-center gap-3 text-zinc-500 text-sm">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Loading scans...
-                  </div>
+                <div className="p-4">
+                  <SkeletonTable rows={3} />
                 </div>
               ) : recentScans.length === 0 ? (
                 <div className="px-6 py-16 text-center">
@@ -267,7 +275,7 @@ export default function DashboardPage() {
                 </table>
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
       </main>
     </div>

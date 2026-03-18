@@ -16,7 +16,9 @@ import {
   Bars3Icon,
   XMarkIcon,
   ChartBarIcon,
+  ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
+import { getUser, logout } from '@/lib/auth';
 
 interface NavItem {
   label: string;
@@ -160,7 +162,27 @@ export default function Sidebar({ scanId, isSiege }: SidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/[0.04]">
+        <div className="p-4 border-t border-white/[0.04] space-y-2">
+          {(() => {
+            const user = getUser();
+            return user ? (
+              <div className="flex items-center justify-between px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-red-500 flex items-center justify-center text-[10px] font-bold text-white uppercase">
+                    {user.username[0]}
+                  </div>
+                  <span className="text-xs text-zinc-400 font-medium">{user.username}</span>
+                </div>
+                <button
+                  onClick={logout}
+                  className="text-zinc-600 hover:text-red-400 transition-colors"
+                  title="Sign out"
+                >
+                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                </button>
+              </div>
+            ) : null;
+          })()}
           <div className="flex items-center gap-2 px-3 py-2">
             <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             <p className="text-[10px] text-zinc-600">ChaosGuard AI v1.0</p>

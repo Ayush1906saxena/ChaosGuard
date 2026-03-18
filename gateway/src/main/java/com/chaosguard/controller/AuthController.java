@@ -2,7 +2,10 @@ package com.chaosguard.controller;
 
 import com.chaosguard.model.AuthRequest;
 import com.chaosguard.model.AuthResponse;
+import com.chaosguard.model.User;
+import com.chaosguard.repository.UserRepository;
 import com.chaosguard.security.JwtTokenProvider;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -15,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -25,46 +27,42 @@ public class AuthController {
 
     private final JwtTokenProvider tokenProvider;
     private final PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
 
-    /**
-     * In-memory user store. Each entry maps username -> {encodedPassword, roles}.
-     * Seeded with a default admin user on first access.
-     */
-    private final Map<String, UserRecord> userStore = new ConcurrentHashMap<>();
-
-    private record UserRecord(String encodedPassword, List<String> roles) {}
-
-    private void ensureDefaultUser() {
-        userStore.computeIfAbsent("admin", k ->
-                new UserRecord(passwordEncoder.encode("admin"), List.of("ADMIN", "USER")));
+    @PostConstruct
+    void seedDefaultAdmin() {
+        if (!userRepository.existsByUsername("admin")) {
+            User admin = User.builder()
+                    .username("admin")
+                    .password(passwordEncoder.encode("admin"))
+                    .roles(List.of("ADMIN", "USER"))
+                    .build();
+            userRepository.save(admin);
+            log.info("Seeded default admin user");
+        }
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {
-        ensureDefaultUser();
-
         if (request.getUsername() == null || request.getUsername().isBlank()
                 || request.getPassword() == null || request.getPassword().isBlank()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "Username and password are required"));
         }
 
-        UserRecord user = userStore.get(request.getUsername());
-        if (user == null || !passwordEncoder.matches(request.getPassword(), user.encodedPassword())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Invalid username or password"));
-        }
-
-        String token = tokenProvider.generateToken(request.getUsername(), user.roles());
-        log.info("User '{}' logged in successfully", request.getUsername());
-
-        return ResponseEntity.ok(new AuthResponse(token, request.getUsername(), user.roles()));
+        return userRepository.findByUsername(request.getUsername())
+                .filter(user -> passwordEncoder.matches(request.getPassword(), user.getPassword()))
+                .map(user -> {
+                    String token = tokenProvider.generateToken(user.getUsername(), user.getRoles());
+                    log.info("User '{}' logged in successfully", user.getUsername());
+                    return ResponseEntity.ok((Object) new AuthResponse(token, user.getUsername(), user.getRoles()));
+                })
+                .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Invalid username or password")));
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody AuthRequest request) {
-        ensureDefaultUser();
-
         if (request.getUsername() == null || request.getUsername().isBlank()
                 || request.getPassword() == null || request.getPassword().isBlank()) {
             return ResponseEntity.badRequest()
@@ -81,19 +79,22 @@ public class AuthController {
                     .body(Map.of("error", "Password must be at least 6 characters"));
         }
 
-        if (userStore.containsKey(request.getUsername())) {
+        if (userRepository.existsByUsername(request.getUsername())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "Username already exists"));
         }
 
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
-        List<String> roles = List.of("USER");
-        userStore.put(request.getUsername(), new UserRecord(encodedPassword, roles));
+        User user = User.builder()
+                .username(request.getUsername())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .roles(List.of("USER"))
+                .build();
+        userRepository.save(user);
 
-        String token = tokenProvider.generateToken(request.getUsername(), roles);
-        log.info("User '{}' registered successfully", request.getUsername());
+        String token = tokenProvider.generateToken(user.getUsername(), user.getRoles());
+        log.info("User '{}' registered successfully", user.getUsername());
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new AuthResponse(token, request.getUsername(), roles));
+                .body(new AuthResponse(token, user.getUsername(), user.getRoles()));
     }
 }

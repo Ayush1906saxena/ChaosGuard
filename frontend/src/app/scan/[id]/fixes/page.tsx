@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getFixes, createIssue, createPullRequest } from '@/lib/api';
+import { getFixes, createIssue, createPullRequest, createSinglePullRequest } from '@/lib/api';
 import SeverityBadge from '@/components/SeverityBadge';
 import DiffViewer from '@/components/DiffViewer';
 import { cn } from '@/lib/utils';
@@ -60,6 +60,19 @@ export default function FixesPage() {
     setActionResult(null);
     try {
       const result = await createPullRequest(scanId, Array.from(selectedFixes));
+      setActionResult({ type: 'success', message: `Pull request created: ${result.prUrl}` });
+    } catch (err) {
+      setActionResult({ type: 'error', message: err instanceof Error ? err.message : 'Failed to create PR' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCreateSinglePR = async (fixId: string) => {
+    setActionLoading(`pr-${fixId}`);
+    setActionResult(null);
+    try {
+      const result = await createSinglePullRequest(scanId, fixId);
       setActionResult({ type: 'success', message: `Pull request created: ${result.prUrl}` });
     } catch (err) {
       setActionResult({ type: 'error', message: err instanceof Error ? err.message : 'Failed to create PR' });
@@ -149,7 +162,28 @@ export default function FixesPage() {
               : 'glow-red border-red-500/20 text-red-400'
           )}
         >
-          {actionResult.message}
+          {actionResult.type === 'success' && actionResult.message.includes('http') ? (
+            (() => {
+              const urlMatch = actionResult.message.match(/https?:\/\/\S+/);
+              const url = urlMatch ? urlMatch[0] : '';
+              const prefix = actionResult.message.replace(url, '').trim();
+              return (
+                <>
+                  {prefix}{' '}
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-emerald-300 transition-colors"
+                  >
+                    {url}
+                  </a>
+                </>
+              );
+            })()
+          ) : (
+            actionResult.message
+          )}
         </div>
       )}
 
@@ -221,6 +255,13 @@ export default function FixesPage() {
                       className="px-3 py-1.5 text-xs bg-white/[0.03] border border-white/[0.06] text-zinc-300 rounded-lg hover:bg-white/[0.06] transition-colors disabled:opacity-50"
                     >
                       {actionLoading === fix.id ? 'Creating...' : 'Create Issue'}
+                    </button>
+                    <button
+                      onClick={() => handleCreateSinglePR(fix.id)}
+                      disabled={actionLoading === `pr-${fix.id}`}
+                      className="px-3 py-1.5 text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                    >
+                      {actionLoading === `pr-${fix.id}` ? 'Creating...' : 'Create PR'}
                     </button>
                     {isExpanded ? (
                       <ChevronUpIcon className="w-5 h-5 text-zinc-500" />

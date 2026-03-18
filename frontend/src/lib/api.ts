@@ -20,6 +20,8 @@ import {
   BenchmarkRun,
 } from './types';
 
+import { getToken, clearAuth } from './auth';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 class ApiError extends Error {
@@ -31,13 +33,23 @@ class ApiError extends Error {
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string>),
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url, { ...options, headers });
+
+  if (res.status === 401 || res.status === 403) {
+    clearAuth();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => 'Unknown error');
@@ -95,16 +107,30 @@ function normalizeScan(scan: any): Scan {
 // Backend returns different field names than what the frontend expects
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeFinding(raw: any): Finding {
+  // Normalize severity — backend may send lowercase or unexpected values
+  const rawSev = (raw.severity || 'INFO').toUpperCase();
+  const validSeverities = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
+  const severity = validSeverities.includes(rawSev) ? rawSev : 'INFO';
+
+  // Normalize tier — backend may send unexpected values like "STRIKE"
+  const rawTier = (raw.metadata?.discovered_tier || raw.tier || 'RECON').toUpperCase();
+  const validTiers = ['RECON', 'HUNTER', 'SIEGE', 'LIVE'];
+  const tier = validTiers.includes(rawTier) ? rawTier : 'RECON';
+
+  // Normalize confidence — may be null, string, or > 1
+  let confidence = typeof raw.confidence === 'string' ? parseFloat(raw.confidence) || 0 : (raw.confidence ?? 0);
+  if (confidence > 1) confidence = confidence / 100;
+
   return {
     id: raw.id,
     scanId: raw.scanId,
     agentName: raw.metadata?.agent || raw.agentName || 'unknown',
-    tier: raw.metadata?.discovered_tier || raw.tier || 'RECON',
-    title: raw.title,
+    tier,
+    title: raw.title || 'Untitled Finding',
     description: raw.description || '',
-    severity: (raw.severity || 'INFO').toUpperCase(),
+    severity,
     category: raw.vulnerabilityType || raw.category || 'other',
-    confidence: typeof raw.confidence === 'string' ? parseFloat(raw.confidence) || 0 : (raw.confidence ?? 0),
+    confidence,
     filePath: raw.filePath || '',
     startLine: raw.lineStart ?? raw.startLine ?? 0,
     endLine: raw.lineEnd ?? raw.endLine ?? 0,
@@ -291,6 +317,16 @@ export async function createPullRequest(
   });
 }
 
+export async function createSinglePullRequest(
+  scanId: string,
+  fixId: string
+): Promise<{ prNumber: number; prUrl: string; filePath: string; branch: string }> {
+  return request<{ prNumber: number; prUrl: string; filePath: string; branch: string }>(
+    `/api/v1/scans/${scanId}/fixes/${fixId}/create-pr`,
+    { method: 'POST' }
+  );
+}
+
 // ── Playbooks ───────────────────────────────────────────────────────────────
 
 export async function getPlaybooks(scanId: string): Promise<PentestPlaybook[]> {
@@ -413,6 +449,65 @@ export async function abortChaosExperiments(
     `/api/v1/scans/${scanId}/chaos-experiments/abort`,
     { method: 'POST' }
   );
+}
+
+// ── React Query Hooks ────────────────────────────────────────────────────────
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+export function useScans(page = 0, size = 20) {
+  return useQuery({
+    queryKey: ['scans', page, size],
+    queryFn: () => listScans(page, size),
+  });
+}
+
+export function useScan(id: string) {
+  return useQuery({
+    queryKey: ['scan', id],
+    queryFn: () => getScan(id),
+    enabled: !!id,
+  });
+}
+
+export function useFindings(scanId: string, filter?: FindingsFilter) {
+  return useQuery({
+    queryKey: ['findings', scanId, filter],
+    queryFn: () => getFindings(scanId, filter),
+    enabled: !!scanId,
+  });
+}
+
+export function useFixes(scanId: string) {
+  return useQuery({
+    queryKey: ['fixes', scanId],
+    queryFn: () => getFixes(scanId),
+    enabled: !!scanId,
+  });
+}
+
+export function useAttackChains(scanId: string) {
+  return useQuery({
+    queryKey: ['attackChains', scanId],
+    queryFn: () => getAttackChains(scanId),
+    enabled: !!scanId,
+  });
+}
+
+export function useChaosScenarios(scanId: string) {
+  return useQuery({
+    queryKey: ['chaosScenarios', scanId],
+    queryFn: () => getChaosScenarios(scanId),
+    enabled: !!scanId,
+  });
+}
+
+export function useCreateScan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateScanRequest) => createScan(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['scans'] }),
+  });
 }
 
 // ── Export ───────────────────────────────────────────────────────────────────

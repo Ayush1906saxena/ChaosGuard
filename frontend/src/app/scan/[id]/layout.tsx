@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
+import Breadcrumbs from '@/components/Breadcrumbs';
 import { getScan } from '@/lib/api';
 import { extractRepoName } from '@/lib/utils';
 import type { Scan, ScanStatus } from '@/lib/types';
@@ -90,6 +91,7 @@ export default function ScanLayout({ children }: { children: React.ReactNode }) 
         )}
 
         <div className="p-6 max-w-7xl mx-auto">
+          <Breadcrumbs />
           {children}
         </div>
       </main>

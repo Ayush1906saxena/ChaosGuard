@@ -29,7 +29,7 @@ interface TierBadgeProps {
 }
 
 export default function TierBadge({ tier, size = 'md', className }: TierBadgeProps) {
-  const config = tierConfig[tier];
+  const config = tierConfig[tier] || tierConfig.RECON;
   return (
     <span
       className={cn(

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: chaosguard
+description: ChaosGuard - AI-powered security scanner & chaos engineering platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - security
+  - chaos-engineering
+  - ai
+  - microservices
+maintainers:
+  - name: ChaosGuard Team
