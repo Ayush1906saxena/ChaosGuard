@@ -65,6 +65,7 @@ public class CloneService {
         String repoUrl = (String) event.get("repoUrl");
         String branch = (String) event.get("branch");
         String tier = (String) event.get("tier");
+        String targetUrl = (String) event.get("targetUrl");
 
         log.info("Received clone event for scan {} repo {}", scanId, repoUrl);
 
@@ -112,6 +113,9 @@ public class CloneService {
             indexEvent.put("clonePath", cloneDir.getAbsolutePath());
             indexEvent.put("metadata", metadata);
             indexEvent.put("timestamp", Instant.now().toString());
+            if (targetUrl != null && !targetUrl.isBlank()) {
+                indexEvent.put("targetUrl", targetUrl);
+            }
 
             kafkaTemplate.send(indexEventsTopic, scanId, indexEvent);
             log.info("Published index event for scan {}", scanId);

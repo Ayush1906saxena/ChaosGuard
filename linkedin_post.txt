@@ -1,0 +1,35 @@
+Just shipped LIVE tier DAST scanning in ChaosGuard AI -- and the results are wild.
+
+ChaosGuard is my open-source, fully self-hosted security platform that scans any GitHub repo using local LLMs. No API keys, no cloud, no data leaves your machine.
+
+The latest update adds end-to-end LIVE tier scanning: point it at a running application, and it doesn't just analyze the source code -- it actively probes the live target for real vulnerabilities.
+
+Here's what a single LIVE scan against OWASP Juice Shop found:
+
+14 CRITICAL | 112 HIGH | 335 MEDIUM | 42 LOW | 36 INFO
+539 total findings -- with auto-generated fixes for every single one.
+
+What makes LIVE tier different from static analysis:
+
+-> Route extraction: Automatically discovers 22+ API endpoints from the codebase
+-> Active DAST probes: Tests for SQL injection, IDOR, auth bypass, and race conditions against the running app
+-> Combined analysis: Merges SAST findings with DAST results, so you see both the vulnerable code AND proof it's exploitable
+-> Attack chain construction: Maps how individual vulnerabilities chain together into real attack paths
+
+The full pipeline: Clone -> Index (ChromaDB + embeddings) -> RECON (static) -> HUNTER (LLM-powered) -> SIEGE (attack chains + chaos simulation) -> LIVE (DAST probes) -> Fix generation -> One-click PR creation.
+
+All running on a MacBook with Ollama. 14 Docker services, one command to start.
+
+The tech stack:
+- Spring Boot 3.2 gateway with JWT auth, circuit breakers, distributed tracing
+- Python agent workers with async orchestration
+- Kafka-driven event pipeline across all services
+- ChromaDB + nomic-embed-text for RAG-powered code understanding
+- Prometheus + Grafana + Tempo observability stack
+- Kubernetes-ready with Helm charts and HPA
+
+Building this has been a masterclass in distributed systems, event-driven architecture, and AI agent orchestration. Every scan coordinates 10+ specialized agents across 4 tiers, each reasoning over actual code context through vector search.
+
+Check it out: https://github.com/Ayush1906saxena/ChaosGuard
+
+#OpenSource #Security #AI #DAST #ChaosEngineering #SoftwareEngineering #LLM #DevSecOps

@@ -73,6 +73,7 @@ class IndexRequest(BaseModel):
     clone_path: str = Field(alias="clonePath", default="")
     tier: str = "STRIKE"  # RECON | STRIKE | SIEGE
     branch: str = "main"
+    target_url: str = Field(alias="targetUrl", default="")
 
 
 class IndexResponse(BaseModel):
@@ -286,6 +287,7 @@ async def _run_indexing(request: IndexRequest) -> IndexResponse:
         "clone_path": clone_path,
         "repo_url": request.repo_url,
         "has_deep_analysis": deep_analysis is not None,
+        "target_url": request.target_url,
     }
     try:
         # Publish to generic topic for backward compatibility

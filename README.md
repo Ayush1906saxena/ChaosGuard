@@ -105,7 +105,7 @@ Four escalating scan tiers with increasing depth:
 - **RECON** — Static analysis in seconds. Secret detection, dependency vulnerabilities, config issues, dangerous function calls
 - **HUNTER** — LLM-powered vulnerability hunting with RAG context. Finds injection flaws, auth bypasses, business logic bugs
 - **SIEGE** — Attack chain construction, chaos cascade simulation, compound failure analysis, pentest playbook generation
-- **LIVE** — DAST probes against running targets (SQLi, IDOR, auth bypass, race conditions)
+- **LIVE** — Full SIEGE analysis + active DAST probes against running targets (route extraction, SQLi, IDOR, auth bypass, race conditions)
 
 </td>
 <td width="50%">
@@ -196,6 +196,8 @@ docker compose up -d
 
 Paste a GitHub URL, select a scan tier, and hit **Launch Scan**.
 
+For **LIVE tier** scans, also provide the target URL of a running application (e.g., `http://localhost:3003`) to enable active DAST probing.
+
 <br>
 
 ## Scan Tiers
@@ -205,7 +207,7 @@ Paste a GitHub URL, select a scan tier, and hit **Launch Scan**.
 | **RECON** | ~1 sec | Static analysis, secret detection, dependency audit, config review | Secret Scanner, Dependency Scanner, Config Auditor, SAST |
 | **HUNTER** | ~8 min | LLM-powered vulnerability hunting with RAG code context | Vulnerability Hunter, Load Analyzer, Config Auditor, Chaos Architect |
 | **SIEGE** | ~15 min | Attack chains, chaos simulation, compound failures, pentest playbooks | All Hunter agents + Attack Chain Constructor, Chaos Cascade Simulator, Exploit Analyst, Business Logic Analyzer |
-| **LIVE** | Varies | Active DAST probes against a running target URL | SQLi Probe, IDOR Probe, Auth Bypass, Race Condition |
+| **LIVE** | ~35 min | All SIEGE agents + active DAST probes against a running target URL | All SIEGE agents + Route Extractor, SQLi Probe, IDOR Probe, Auth Bypass, Race Condition |
 
 <br>
 
@@ -257,7 +259,7 @@ Interactive Swagger UI is available at [http://localhost:8080/swagger-ui.html](h
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/v1/scans` | Create a new scan |
+| `POST` | `/api/v1/scans` | Create a new scan (include `targetUrl` for LIVE tier) |
 | `GET` | `/api/v1/scans/{id}` | Get scan status |
 | `GET` | `/api/v1/scans/{id}/findings` | List findings (paginated, filterable) |
 | `GET` | `/api/v1/scans/{id}/fixes` | List generated fixes |
