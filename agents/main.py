@@ -140,12 +140,12 @@ def _update_scan_db(scan_id: str, status: str, error_message: str | None):
             with conn.cursor() as cur:
                 if error_message:
                     cur.execute(
-                        "UPDATE scans SET status = %s, error_message = %s, updated_at = NOW() WHERE scan_id = %s",
+                        "UPDATE scans SET status = %s, error_message = %s, updated_at = NOW() WHERE id = %s::uuid",
                         (status, error_message[:2000], scan_id),
                     )
                 else:
                     cur.execute(
-                        "UPDATE scans SET status = %s, updated_at = NOW() WHERE scan_id = %s",
+                        "UPDATE scans SET status = %s, updated_at = NOW() WHERE id = %s::uuid",
                         (status, scan_id),
                     )
             conn.commit()
@@ -162,44 +162,51 @@ def _save_findings_to_db(scan_id: str, findings: list[dict], report: dict):
         try:
             with conn.cursor() as cur:
                 # Save individual findings
+                saved = 0
                 for finding in findings:
-                    cur.execute(
-                        """
-                        INSERT INTO findings (scan_id, finding_id, title, severity, category,
-                                              description, file_path, line_number, evidence,
-                                              remediation, agent, tier, data)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (scan_id, finding_id) DO UPDATE SET
-                            title = EXCLUDED.title,
-                            severity = EXCLUDED.severity,
-                            data = EXCLUDED.data,
-                            updated_at = NOW()
-                        """,
-                        (
-                            scan_id,
-                            finding.get("id", str(uuid.uuid4())),
-                            finding.get("title", ""),
-                            finding.get("severity", "unknown"),
-                            finding.get("category", "unknown"),
-                            finding.get("description", ""),
-                            finding.get("file_path", ""),
-                            finding.get("line", 0),
-                            finding.get("evidence", ""),
-                            finding.get("remediation", ""),
-                            finding.get("agent", ""),
-                            finding.get("discovered_tier", "UNKNOWN"),
-                            json.dumps(finding),
-                        ),
-                    )
+                    try:
+                        line_val = finding.get("line", finding.get("line_start"))
+                        if isinstance(line_val, list):
+                            line_val = line_val[0] if line_val else None
+                        if isinstance(line_val, str):
+                            line_val = int(line_val) if line_val.isdigit() else None
+                        severity = finding.get("severity", "MEDIUM")
+                        if isinstance(severity, str):
+                            severity = severity.upper()
+                        if severity not in ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"):
+                            severity = "MEDIUM"
+                        cur.execute(
+                            """
+                            INSERT INTO findings (scan_id, vulnerability_type, severity, title,
+                                                  description, file_path, line_start, code_snippet,
+                                                  remediation, owasp_category, metadata)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            """,
+                            (
+                                scan_id,
+                                finding.get("category", finding.get("vulnerability_type", "unknown"))[:200],
+                                severity,
+                                finding.get("title", "")[:500],
+                                finding.get("description", ""),
+                                finding.get("file_path", "")[:500],
+                                line_val,
+                                finding.get("evidence", finding.get("code_snippet", "")),
+                                finding.get("remediation", ""),
+                                finding.get("owasp_category", "")[:100],
+                                json.dumps(finding),
+                            ),
+                        )
+                        saved += 1
+                    except Exception as exc:
+                        logger.warning("Failed to save finding: %s", exc)
+                        conn.rollback()
+                logger.info("Saved %d/%d findings for scan %s", saved, len(findings), scan_id)
 
                 # Save full report
                 cur.execute(
                     """
                     INSERT INTO reports (scan_id, report_data, created_at)
                     VALUES (%s, %s, NOW())
-                    ON CONFLICT (scan_id) DO UPDATE SET
-                        report_data = EXCLUDED.report_data,
-                        updated_at = NOW()
                     """,
                     (scan_id, json.dumps(report)),
                 )

@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [repoUrl, setRepoUrl] = useState('');
   const [branch, setBranch] = useState('main');
   const [tier, setTier] = useState<ScanTier>('HUNTER');
+  const [targetUrl, setTargetUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recentScans, setRecentScans] = useState<Scan[]>([]);
@@ -68,7 +69,13 @@ export default function DashboardPage() {
     setError(null);
 
     try {
-      const scan = await createScan({ repoUrl: repoUrl.trim(), branch, tier });
+      const req: { repoUrl: string; branch: string; tier: typeof tier; targetUrl?: string } = {
+        repoUrl: repoUrl.trim(), branch, tier,
+      };
+      if (tier === 'LIVE' && targetUrl.trim()) {
+        req.targetUrl = targetUrl.trim();
+      }
+      const scan = await createScan(req);
       router.push(`/scan/${scan.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start scan');
@@ -157,6 +164,27 @@ export default function DashboardPage() {
             <div className="animate-slide-up" style={{ animationDelay: '0.1s', animationFillMode: 'backwards' }}>
               <h3 className="text-xs font-medium text-zinc-500 mb-4 uppercase tracking-wider">Select Scan Tier</h3>
               <TierSelector selectedTier={tier} onSelect={setTier} />
+
+              {/* Target URL for LIVE tier */}
+              {tier === 'LIVE' && (
+                <div className="mt-6 glass-card rounded-2xl p-6">
+                  <label htmlFor="targetUrl" className="block text-xs font-medium text-zinc-500 mb-2 uppercase tracking-wider">
+                    Target URL (running application)
+                  </label>
+                  <input
+                    id="targetUrl"
+                    type="url"
+                    value={targetUrl}
+                    onChange={(e) => setTargetUrl(e.target.value)}
+                    placeholder="http://localhost:3003"
+                    required
+                    className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3.5 text-sm text-zinc-200 placeholder-zinc-600 focus:ring-2 focus:ring-red-500/30 focus:border-red-500/30 transition-all"
+                  />
+                  <p className="text-[10px] text-zinc-600 mt-1">
+                    LIVE tier runs active DAST probes (SQLi, IDOR, auth bypass) against a running target
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Error */}

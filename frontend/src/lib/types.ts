@@ -280,6 +280,7 @@ export interface CreateScanRequest {
   repoUrl: string;
   branch?: string;
   tier: ScanTier;
+  targetUrl?: string;
 }
 
 export interface PaginatedResponse<T> {

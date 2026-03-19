@@ -170,6 +170,7 @@ public class ScanService {
         String host = targetUrl.replaceFirst("https?://", "").split("[:/]")[0].toLowerCase();
         List<String> allowedPatterns = List.of(
             "localhost", "127.0.0.1", "0.0.0.0",
+            "host.docker.internal", "172.17.", "10.0.", "192.168.",
             "staging", "dev", "test", "qa", "sandbox"
         );
         boolean allowed = allowedPatterns.stream().anyMatch(
