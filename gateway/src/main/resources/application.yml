@@ -142,7 +142,7 @@ chaosguard:
   scan:
     max-concurrent-scans: ${MAX_CONCURRENT_SCANS:10}
     max-repo-size-mb: ${MAX_REPO_SIZE_MB:500}
-    max-file-count: ${MAX_FILE_COUNT:50000}
+    max-file-count: ${MAX_FILE_COUNT:100000}
     clone-base-dir: ${CLONE_BASE_DIR:/tmp/chaosguard/repos}
     clone-timeout-seconds: ${CLONE_TIMEOUT_SECONDS:300}
   kafka:

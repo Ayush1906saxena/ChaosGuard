@@ -120,7 +120,7 @@ async def _process_scan_event(event: dict):
         _save_findings_to_db(scan_id, state["findings"], report)
 
         # Update scan status to complete
-        _update_scan_db(scan_id, "completed", None)
+        _update_scan_db(scan_id, "COMPLETE", None)
 
         # Publish scan-complete event to Kafka
         _publish_scan_complete(scan_id, tier, repo_url, report)
@@ -228,7 +228,7 @@ def _publish_scan_complete(scan_id: str, tier: str, repo_url: str, report: dict)
             "scan_id": scan_id,
             "tier": tier,
             "repo_url": repo_url,
-            "status": "completed",
+            "status": "COMPLETE",
             "total_findings": report.get("summary", {}).get("total_findings", 0),
             "by_severity": report.get("summary", {}).get("by_severity", {}),
             "completed_at": datetime.utcnow().isoformat(),
