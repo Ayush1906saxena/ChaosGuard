@@ -65,8 +65,8 @@ class OllamaClient:
             "stream": False,
             "options": {
                 "temperature": temperature,
-                "num_ctx": 4096,
-                "num_predict": 4096,
+                "num_ctx": 8192,
+                "num_predict": 8192,
             },
         }
         if system:
@@ -163,12 +163,79 @@ class OllamaClient:
             except json.JSONDecodeError:
                 pass
 
+        # Try to repair truncated JSON by closing open braces/brackets
+        repaired = OllamaClient._repair_truncated_json(cleaned)
+        if repaired:
+            try:
+                return json.loads(repaired)
+            except json.JSONDecodeError:
+                pass
+
         # Fallback
         logger.warning(
             "Could not parse JSON from LLM response (length=%d, first 200 chars: %s), returning empty findings",
             len(text), text[:200].replace("\n", " ")
         )
         return {"findings": []}
+
+    @staticmethod
+    def _repair_truncated_json(text: str) -> str | None:
+        """Attempt to repair JSON truncated by token limit."""
+        # Find the start of JSON
+        start = -1
+        for i, c in enumerate(text):
+            if c in ('{', '['):
+                start = i
+                break
+        if start == -1:
+            return None
+
+        # Count open braces/brackets
+        open_braces = 0
+        open_brackets = 0
+        in_string = False
+        escape = False
+        # Trim trailing incomplete string values
+        trimmed = text.rstrip()
+        # Remove trailing incomplete key-value if ends mid-string
+        if trimmed.endswith((',', ':', '"')):
+            # Find last complete value
+            last_complete = max(trimmed.rfind('}'), trimmed.rfind(']'), trimmed.rfind('"', 0, len(trimmed) - 1))
+            if last_complete > start:
+                trimmed = trimmed[:last_complete + 1]
+
+        for c in trimmed[start:]:
+            if escape:
+                escape = False
+                continue
+            if c == '\\':
+                escape = True
+                continue
+            if c == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if c == '{':
+                open_braces += 1
+            elif c == '}':
+                open_braces -= 1
+            elif c == '[':
+                open_brackets += 1
+            elif c == ']':
+                open_brackets -= 1
+
+        if open_braces == 0 and open_brackets == 0:
+            return None  # Already balanced, parsing failed for other reasons
+
+        # Close unclosed strings if we're in one
+        result = trimmed
+        if in_string:
+            result += '"'
+        # Close brackets then braces
+        result += ']' * open_brackets
+        result += '}' * open_braces
+        return result
 
     @staticmethod
     def _extract_balanced_json(text: str, open_char: str, close_char: str) -> str | None:
