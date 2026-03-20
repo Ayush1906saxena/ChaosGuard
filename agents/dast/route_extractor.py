@@ -23,6 +23,13 @@ ENDPOINT_PATTERNS = [
     re.compile(r'@(?:app|router)\.(get|post|put|delete|patch)\s*\(\s*["\']([^"\']+)["\']', re.IGNORECASE),
     # Go net/http
     re.compile(r'(?:Handle|HandleFunc)\s*\(\s*["\']([^"\']+)["\']', re.IGNORECASE),
+    # Ruby on Rails
+    re.compile(r'(?:get|post|put|patch|delete)\s+["\']([^"\']+)["\']', re.IGNORECASE),
+    re.compile(r'(?:resources?|namespace|scope)\s+[:\'](\w+)', re.IGNORECASE),
+    # Django
+    re.compile(r'path\s*\(\s*["\']([^"\']+)["\']', re.IGNORECASE),
+    # Sinatra
+    re.compile(r'(?:get|post|put|patch|delete)\s+["\']([^"\']+)["\']', re.IGNORECASE),
 ]
 
 
@@ -57,6 +64,9 @@ class RouteExtractor:
                 "app.get app.post router.get router.post Express route",
                 "@app.get @app.post FastAPI Flask route",
                 "HandleFunc Handle http endpoint",
+                "resources routes get post put delete Rails route",
+                "path urlpatterns Django URL route",
+                "namespace scope mount API route endpoint",
             ]
 
             seen_paths = set()
