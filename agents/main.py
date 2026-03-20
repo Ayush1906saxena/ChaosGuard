@@ -90,7 +90,7 @@ async def _process_scan_event(event: dict):
 
     try:
         # Update scan status to running
-        _update_scan_db(scan_id, "running", None)
+        _update_scan_db(scan_id, "ANALYZING", None)
 
         # Run orchestrator
         state = await orchestrator.run(
@@ -131,7 +131,7 @@ async def _process_scan_event(event: dict):
 
     except Exception as exc:
         logger.error("Scan %s failed: %s", scan_id, exc)
-        _update_scan_db(scan_id, "failed", str(exc))
+        _update_scan_db(scan_id, "FAILED", str(exc))
 
 
 def _update_scan_db(scan_id: str, status: str, error_message: str | None):
