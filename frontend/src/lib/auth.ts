@@ -28,13 +28,18 @@ export function setAuth(token: string, username: string, roles: string[]): void 
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify({ username, roles, token }));
   // Set cookie for middleware (server-side route protection)
-  document.cookie = `chaosguard_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+  // Use SameSite=Lax and ensure path=/ for all routes
+  const isSecure = window.location.protocol === 'https:';
+  document.cookie = `chaosguard_token=${token}; path=/; max-age=86400; SameSite=Lax${isSecure ? '; Secure' : ''}`;
+  // Also set a simple auth flag cookie as fallback
+  document.cookie = `chaosguard_authed=1; path=/; max-age=86400; SameSite=Lax${isSecure ? '; Secure' : ''}`;
 }
 
 export function clearAuth(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   document.cookie = 'chaosguard_token=; path=/; max-age=0';
+  document.cookie = 'chaosguard_authed=; path=/; max-age=0';
 }
 
 export function isAuthenticated(): boolean {

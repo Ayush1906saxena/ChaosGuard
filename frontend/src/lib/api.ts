@@ -44,10 +44,14 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   const res = await fetch(url, { ...options, headers });
 
-  if (res.status === 401 || res.status === 403) {
-    clearAuth();
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
+  if (res.status === 401) {
+    // Only redirect to login if we had a token (i.e. it expired or is invalid)
+    // Don't clear on 403 — that's a permission issue, not an auth issue
+    if (token) {
+      clearAuth();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
     }
   }
 

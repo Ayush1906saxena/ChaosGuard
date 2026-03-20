@@ -15,11 +15,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for auth token in cookie or localStorage isn't accessible in middleware,
-  // so we use a cookie that gets set alongside localStorage
+  // Check for auth token cookie or fallback auth flag cookie
+  // localStorage isn't accessible in middleware, so we rely on cookies set alongside it
   const token = request.cookies.get('chaosguard_token')?.value;
+  const authed = request.cookies.get('chaosguard_authed')?.value;
 
-  if (!token) {
+  if (!token && !authed) {
     const loginUrl = new URL('/login', request.url);
     return NextResponse.redirect(loginUrl);
   }
