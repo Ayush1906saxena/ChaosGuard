@@ -181,6 +181,7 @@ def _save_findings_to_db(scan_id: str, findings: list[dict], report: dict):
                                                   description, file_path, line_start, code_snippet,
                                                   remediation, owasp_category, metadata)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            RETURNING id
                             """,
                             (
                                 scan_id,
@@ -196,6 +197,38 @@ def _save_findings_to_db(scan_id: str, findings: list[dict], report: dict):
                                 json.dumps(finding),
                             ),
                         )
+                        row = cur.fetchone()
+                        finding_db_id = row[0] if row else None
+
+                        # Save generated fix if present
+                        fix = finding.get("fix")
+                        if fix and finding_db_id:
+                            validation = fix.get("validation", {})
+                            confidence = validation.get("confidence", 50) if validation else 50
+                            cur.execute(
+                                """
+                                INSERT INTO generated_fixes (scan_id, finding_id, file_path,
+                                    original_code, fixed_code, diff_patch, explanation,
+                                    confidence_score, syntax_valid, compile_valid,
+                                    tests_pass, sandbox_output, metadata)
+                                VALUES (%s::uuid, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                """,
+                                (
+                                    scan_id,
+                                    finding_db_id,
+                                    str(finding.get("file_path", "")),
+                                    str(fix.get("original_code", "")),
+                                    str(fix.get("fixed_code", "")),
+                                    fix.get("diff", ""),
+                                    fix.get("description", ""),
+                                    confidence,
+                                    fix.get("syntax_valid"),
+                                    fix.get("compile_valid"),
+                                    fix.get("tests_pass"),
+                                    fix.get("sandbox_output", ""),
+                                    json.dumps(validation),
+                                ),
+                            )
                         saved += 1
                     except Exception as exc:
                         logger.warning("Failed to save finding: %s", exc)
