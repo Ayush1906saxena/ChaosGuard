@@ -118,10 +118,10 @@ class OllamaClient:
 
     @staticmethod
     def _parse_json_response(text: str) -> dict[str, Any]:
-        """Extract JSON from LLM response, stripping markdown fences."""
-        # Strip markdown code fences
-        cleaned = re.sub(r"```(?:json)?\s*", "", text)
-        cleaned = re.sub(r"```\s*$", "", cleaned, flags=re.MULTILINE)
+        """Extract JSON from LLM response, with robust fallback parsing."""
+        # Strip markdown code fences (various formats)
+        cleaned = re.sub(r"```(?:json|JSON)?\s*\n?", "", text)
+        cleaned = re.sub(r"\n?\s*```", "", cleaned)
         cleaned = cleaned.strip()
 
         # Try direct parse first
@@ -130,26 +130,75 @@ class OllamaClient:
         except json.JSONDecodeError:
             pass
 
-        # Try to find a JSON object within the text
-        brace_match = re.search(r"\{[\s\S]*\}", cleaned)
-        if brace_match:
+        # Try to find the outermost JSON object using brace counting
+        obj = OllamaClient._extract_balanced_json(cleaned, "{", "}")
+        if obj is not None:
             try:
-                return json.loads(brace_match.group())
+                return json.loads(obj)
             except json.JSONDecodeError:
                 pass
 
-        # Try to find a JSON array
-        bracket_match = re.search(r"\[[\s\S]*\]", cleaned)
-        if bracket_match:
+        # Try to find a JSON array using bracket counting
+        arr = OllamaClient._extract_balanced_json(cleaned, "[", "]")
+        if arr is not None:
             try:
-                parsed = json.loads(bracket_match.group())
+                parsed = json.loads(arr)
                 return {"findings": parsed}
             except json.JSONDecodeError:
                 pass
 
+        # Try fixing common JSON issues: trailing commas, single quotes
+        fixed = re.sub(r",\s*([}\]])", r"\1", cleaned)  # trailing commas
+        fixed = fixed.replace("'", '"')  # single quotes to double
+        try:
+            return json.loads(fixed)
+        except json.JSONDecodeError:
+            pass
+
+        # Try extracting from fixed text
+        obj = OllamaClient._extract_balanced_json(fixed, "{", "}")
+        if obj is not None:
+            try:
+                return json.loads(obj)
+            except json.JSONDecodeError:
+                pass
+
         # Fallback
-        logger.warning("Could not parse JSON from LLM response, returning empty findings")
+        logger.warning(
+            "Could not parse JSON from LLM response (length=%d, first 200 chars: %s), returning empty findings",
+            len(text), text[:200].replace("\n", " ")
+        )
         return {"findings": []}
+
+    @staticmethod
+    def _extract_balanced_json(text: str, open_char: str, close_char: str) -> str | None:
+        """Extract a balanced JSON structure using brace/bracket counting."""
+        start = text.find(open_char)
+        if start == -1:
+            return None
+        depth = 0
+        in_string = False
+        escape = False
+        for i in range(start, len(text)):
+            c = text[i]
+            if escape:
+                escape = False
+                continue
+            if c == "\\":
+                escape = True
+                continue
+            if c == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if c == open_char:
+                depth += 1
+            elif c == close_char:
+                depth -= 1
+                if depth == 0:
+                    return text[start:i + 1]
+        return None
 
     async def is_healthy(self) -> bool:
         """Check whether Ollama is reachable."""

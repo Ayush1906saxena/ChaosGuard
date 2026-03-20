@@ -43,6 +43,8 @@ def _kafka_consumer_loop():
         "group.id": "chaosguard-agents",
         "auto.offset.reset": "latest",
         "enable.auto.commit": True,
+        "max.poll.interval.ms": 86400000,  # 24h — scans can take hours on local Ollama
+        "session.timeout.ms": 45000,
     }
 
     consumer = Consumer(consumer_conf)
